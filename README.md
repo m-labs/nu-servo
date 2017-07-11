@@ -6,7 +6,7 @@
 
 * [iir.py](iir.py) Main processing core
 * [iir_impl.py](iir_impl.py) Test implementation on Arty
-* [iir_transfer.py](irr_transfer.py) Transfer function simulation tool
+* [iir_transfer.py](iir_transfer.py) Transfer function simulation tool
 * [iir_sim.py](iir_sim.py) Verification and unittesting tool
 
 ## IIR states
