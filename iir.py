@@ -7,8 +7,20 @@ from migen import *
 logger = logging.getLogger(__name__)
 
 
-IIRWidths = namedtuple("IIRWidths", "state coeff accu adc word asf "
-        "shift channel profile")
+# all these are number of bits!
+IIRWidths = namedtuple("IIRWidths", [
+    "state",    # the signed x and y states of the IIR filter
+                # DSP A input, x state is one bit smaller
+                # due to AD pre-adder, y has full width
+    "coeff",    # signed IIR filter coefficients a1, b0, b1
+    "accu",     # IIR accumulator width
+    "adc",      # signed ADC data
+    "word",     # "word" size to break up DDS profile data
+    "asf",      # unsigned amplitude scale factor for DDS
+    "shift",    # fixed point scaling coefficient for a1, b0, b1
+    "channel",  # channels (log2!)
+    "profile",  # profiles per channel (log2!)
+])
 
 
 def signed(v, w):
@@ -77,6 +89,9 @@ class IIR(Module):
         self.widths = w
         for i, j in enumerate(w):
             assert j > 0, (i, j, w)
+        assert w.word <= w.coeff  # same memory
+        assert w.state + w.coeff + 3 <= w.accu
+
         # m_coeff should only be accessed during self.done | self.loading
         self.specials.m_coeff = Memory(
                 width=2*w.coeff,  # Cat(pow/ftw/offset, cfg/a/b)
