@@ -77,9 +77,15 @@ def f2i(f, width, shift):
 
 def pi_iir(widths, f, k, g=np.inf):
     # transfer function: H(s) = k*(s/(2*pi*f) + 1)/(s/(2*pi*f) + 1/g)
+    # g=inf, H(s) = k*(s/w + 1)/(s/w) = k*(1 + w/s) = k + k*2*pi*f/s
     # f: integrator corner a.k.a. P zero (in units of fs)
     # k: P gain
     # g: I gain limit
+
+    # H1(s) = k + m/s
+    # k [2e-2, 2e1]
+    # f [2e-2, 2e-1]
+    # m=k*2*pi*f [1e-3, 1e1]
     f *= np.pi
     z = f/g + 1
     a1 = f2i((f/g - 1)/z, widths.coeff, widths.shift)
@@ -112,9 +118,9 @@ def main():
         # a1, b0, b1 = pi_iir(w, f=.2, k=.1)
         # a1, b0, b1 = pi_iir(w, f=.3, k=15.9)
         a1, b0, b1 = pi_iir(w, f=.005, k=.01)
-        y1 = 1 << w.state - 2
+        y1 = f2i(.5, w.state, w.state - 1)
         offset = 0
-        # print([hex(_) for _ in (offset, y1, a1, b0, b1)])
+        print([hex(_) for _ in (offset, y1, a1, b0, b1)])
         yield from dut.set_state(ch, y1, profile=pr, coeff="y1")
         yield from dut.set_coeff(ch, pr, "cfg",
                         (ch << 0) | (0 << 8))
@@ -125,7 +131,7 @@ def main():
         yield from dut.set_coeff(ch, pr, "offset", offset)
         yield
 
-    x, y = drive_uni(dut, samples=1<<8, amplitude=.2, seed=0x123,
+    x, y = drive_uni(dut, samples=1<<8, amplitude=.8, seed=0x123,
             cfg=cfg(dut))
     analyze(x, y, log=True)
     plt.show()

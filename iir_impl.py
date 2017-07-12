@@ -6,7 +6,7 @@ import iir, arty
 class Servo(Module):
     def __init__(self, plat):
         w = iir.IIRWidths(state=25, coeff=18, adc=16,
-                asf=14, word=16, accu=48, shift=16,
+                asf=14, word=16, accu=48, shift=11,
                 channel=3, profile=5)
 
         top = iir.IIR(w)
