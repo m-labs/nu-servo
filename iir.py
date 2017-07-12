@@ -52,6 +52,7 @@ class DSP(Module):
                 p.eq(p + m),
                 If(self.accu_clr,
                     # inject symmetric rouding constant
+                    # (won't infer P reg)
                     # p.eq(1 << (w.shift - 1))
                     p.eq(0),
                 )
@@ -152,8 +153,9 @@ class IIR(Module):
         )
         fsm.act("PROCESS",
                 self.processing.eq(1),
+                # this is technically three cycles late
+                # (one for setting stage, and phase=2,3 with stage[2]==1)
                 If(stage == 0,
-                    state_clr.eq(1),
                     NextState("IDLE")
                 )
         )
