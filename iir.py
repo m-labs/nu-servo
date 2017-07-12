@@ -27,7 +27,6 @@ class DSP(Module):
         self.coeff = Signal((w.coeff, True))
         self.output = Signal((w.state, True))
         self.accu_clr = Signal()
-        self.offset_clr = Signal()
         self.offset_load = Signal()
         self.clip = Signal()
 
@@ -42,9 +41,6 @@ class DSP(Module):
                 a.eq(self.state),
                 If(self.offset_load,
                     d.eq(self.offset)
-                ),
-                If(self.offset_clr,
-                    d.eq(0)
                 ),
                 ad.eq(d - a),
                 b.eq(self.coeff),
@@ -201,16 +197,22 @@ class IIR(Module):
         dsp = DSP(w)
         self.submodules += dsp
 
+        offset_clr = Signal()
+
         self.comb += [
                 m_coeff.adr.eq(Cat(phase, profile[0],
                     Mux(phase==0, channel[1], channel[0]))),
-                dsp.offset[-w.coeff - 1:-1].eq(m_coeff.dat_r[:w.coeff]),
-                dsp.offset[-1].eq(dsp.offset[-2]),
+                dsp.offset[-w.coeff - 1:].eq(Mux(offset_clr, 0,
+                    Cat(m_coeff.dat_r[:w.coeff], m_coeff.dat_r[w.coeff - 1])
+                )),
                 dsp.coeff.eq(m_coeff.dat_r[w.coeff:]),
                 dsp.state.eq(m_state.dat_r),
                 Case(phase, {
                     0: dsp.accu_clr.eq(1),
-                    2: dsp.offset_clr.eq(1),
+                    2: [
+                        offset_clr.eq(1),
+                        dsp.offset_load.eq(1)
+                    ],
                     3: dsp.offset_load.eq(1)
                 })
         ]
