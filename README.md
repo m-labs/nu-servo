@@ -38,3 +38,7 @@ DDS                             CMD PROF WAIT IO_UP
 STAGE1: 4 + 57 + 16 + 8 + 41 = 126
 STAGE2: 8 + 128 + 1 + 2 = 139
 ```
+
+## Ideas
+
+* timing: pipeline shifting stage to add slack to the RAMB-out to RAMB-in path
