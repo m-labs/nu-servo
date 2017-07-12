@@ -13,13 +13,13 @@ class Servo(Module):
         self.submodules += top
 
         m_coeff = top.m_coeff.get_port(write_capable=True)
-        m_state = top.m_state.get_port()
+        m_state = top.m_state.get_port(write_capable=True)
         self.specials += m_coeff, m_state
 
         # wire dummy SRs to inputs and outputs to prevent optimization
 
         ins = [
-                m_state.adr, # m_state.we, m_state.dat_w,
+                m_state.adr, m_state.we, m_state.dat_w,
                 m_coeff.adr, m_coeff.we, m_coeff.dat_w,
                 ] + top.adc
         for ctrl in top.ctrl:
