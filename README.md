@@ -23,16 +23,18 @@
 ## Overall timing pipeline
 
 ```
-ADC: 2*16*4 ns (250 MHz LVDS clock) READ
-FIL: 16 SHIFT, 8 LOAD, 8*4+6 PROC
-DDS: 8*16 ns CMD, 64*8 PROF
-
-ns:
+in 8 ns cycles:
+ADC: 30 ns CONVH: 4, 450 ns CONV: 57, 2*16*4 ns (125 MHz DDR LVDS) READ: 16
+IIR: 16 SHIFT, 8 LOAD, 8*4+8+1=41 PROC
+DDS: 8*16 ns CMD = 8, 64*16 ns PROF = 128, SPI WAIT = 1, IO_UPDATE = 2
 
 ADC CONVH CONV READ
-    32    480  128
-FIL            SHIFT LOAD  PROC
-               128   64    352
-DDS                         CMD PROF
-                            128 1024
+    4     57   16
+IIR            SHIFT LOAD  PROC
+               16    8     41
+DDS                             CMD PROF WAIT IO_UP
+                                8   128  1    2
+
+STAGE1: 4 + 57 + 16 + 8 + 41 = 126
+STAGE2: 8 + 128 + 1 + 2 = 139
 ```
