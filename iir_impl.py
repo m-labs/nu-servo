@@ -3,7 +3,7 @@ from migen import *
 import iir, arty
 
 
-class Servo(Module):
+class Top(Module):
     def __init__(self, plat):
         w = iir.IIRWidths(state=25, coeff=18, adc=16,
                 asf=14, word=16, accu=48, shift=11,
@@ -55,7 +55,7 @@ class Servo(Module):
 def main():
     plat = arty.Platform()
     plat.default_clk_period = 1000/150
-    top = Servo(plat)
+    top = Top(plat)
     plat.build(top)
 
 
