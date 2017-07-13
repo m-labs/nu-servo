@@ -16,7 +16,7 @@
 * loading
 * processing
 
-# Processing pipeline
+# IIR pipeline
 
 [Pipeline notes](pipeline.ods)
 
@@ -35,10 +35,17 @@ IIR            SHIFT LOAD  PROC
 DDS                             CMD PROF WAIT IO_UP
                                 8   128  1    2
 
-STAGE1: 4 + 57 + 16 + 8 + 41 = 126
-STAGE2: 8 + 128 + 1 + 2 = 139
+SLOT1: 4 + 57 + 16 + 8 + 41 = 126
+SLOT2: 8 + 128 + 1 + 2 = 139
 ```
 
 ## Ideas
 
-* timing: pipeline shifting stage to add slack to the RAMB-out to RAMB-in path
+### Resources
+
+* move dlys into m_state RAM (high bits of y1)
+
+### Timing
+
+* pipeline shifting stage (RAMB-out to RAMB-in path)
+* pipeline delay updates later (m_coeff to dlys[i] path)
