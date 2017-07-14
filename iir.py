@@ -92,38 +92,44 @@ class IIR(Module):
         assert w.word <= w.coeff  # same memory
         assert w.state + w.coeff + 3 <= w.accu
 
-        # m_coeff should only be accessed during self.done | self.loading
+        # m_coeff of active profiles should only be accessed during
+        # ~processing
         self.specials.m_coeff = Memory(
                 width=2*w.coeff,  # Cat(pow/ftw/offset, cfg/a/b)
                 depth=4 << w.profile + w.channel)
-        # m_state[x] should only be read during ~self.loading
-        # m_state[y] should only be read during self.done | self.loading
+        # m_state[x] should only be read during ~(shifting |
+        # loading)
+        # m_state[y] of active profiles should only be read during
+        # ~processing
         self.specials.m_state = Memory(
                 width=w.state,  # y1,x0,x1
                 depth=(1 << w.profile + w.channel) + (2 << w.channel))
         # ctrl should only be updated synchronously
+        # TODO: implement dlys clearing when changing profile or
+        # clearing en_out
         self.ctrl = [Record([
             ("profile", w.profile),
             ("en_out", 1),
             ("en_iir", 1)])
             for i in range(1 << w.channel)]
-        # only update during ~self.loading
+        # only update during ~loading
         self.adc = [Signal((w.adc, True), reset_less=True)
                 for i in range(1 << w.channel)]
         # Cat(ftw0, ftw1, pow, asf)
-        # only read during self.done | self.loading
+        # only read during ~processing
         self.dds = [Signal(4*w.word, reset_less=True)
                 for i in range(1 << w.channel)]
-        # perform one IIR iteration, start with loading,
-        # then compute, end with done
+        # perform one IIR iteration, start with shifting, then loading,
+        # then processing, end with done
         self.start = Signal()
-        # shifting state values
+        # shifting input state values around (x0 becomes x1)
         self.shifting = Signal()
-        # adc inputs being loaded into RAM
+        # adc inputs being loaded into RAM (becoming x0)
         self.loading = Signal()
-        # processing state data
+        # processing state data (extracting ftw0/ftw1/pow,
+        # computing asf/y0, and storing as y1)
         self.processing = Signal()
-        # dds outputs ready and won't be touched again until ~(done | loading)
+        # dds outputs ready and won't be touched again until processing
         self.done = Signal()
 
         ###
@@ -164,8 +170,8 @@ class IIR(Module):
         )
         fsm.act("PROCESS",
                 self.processing.eq(1),
-                # this is technically three cycles late
-                # (one for setting stage, and phase=2,3 with stage[2]==1)
+                # this is technically wasting three cycles
+                # (one for setting stage, and phase=2,3 with stage[2])
                 If(stage == 0,
                     NextState("IDLE")
                 )
