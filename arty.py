@@ -12,7 +12,7 @@ from migen.build.xilinx import XilinxPlatform, VivadoProgrammer
 class XilinxDDRInputImplS7(Module):
     def __init__(self, i, o1, o2, clk):
         self.specials += Instance("IDDR",
-                p_DDR_CLK_EDGE="SAME_EDGE",
+                p_DDR_CLK_EDGE="SAME_EDGE_PIPELINED",
                 i_C=clk, i_CE=1, i_S=0, i_R=0,
                 o_D=i, i_Q1=o1, i_Q2=o2,
         )
