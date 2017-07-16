@@ -66,8 +66,6 @@ class TB(Module):
         self.clkout = Signal(reset_less=True)
         self.cnv_b = Signal()
 
-        lanes = p.channels//2
-
         sck_en = Signal()
         cd_adc = ClockDomain("adc", reset_less=True)
         self.clock_domains += cd_adc
@@ -77,12 +75,12 @@ class TB(Module):
                 for i in range(p.channels)]
 
         srs = []
-        for i in range(lanes):
+        for i in range(p.lanes):
             name = "sdo" + string.ascii_lowercase[i]
             sdo = Signal(name=name, reset_less=True)
             self.sdo.append(sdo)
             setattr(self, name, sdo)
-            sr = Signal(p.width*p.channels//lanes, reset_less=True)
+            sr = Signal(p.width*p.channels//p.lanes, reset_less=True)
             srs.append(sr)
             self.specials += io.DDROutput(
                     # one for async
@@ -117,7 +115,7 @@ class TB(Module):
 
 
 def main():
-    params = adc_ser.ADCParams(width=8, channels=4,
+    params = adc_ser.ADCParams(width=8, channels=4, lanes=2,
             t_cnvh=3, t_conv=5, t_rtt=4)
     tb = TB(params)
 

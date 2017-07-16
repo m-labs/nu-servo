@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 # all times in cycles
 ADCParams = namedtuple("ADCParams", [
     "channels", # number of channels
-                # number of lanes will be inferred from pads
+    "lanes",    # number of SDO? data lanes
+                # lanes need to be named alphabetically and contiguous
+                # (e.g. [sdoa, sdob, sdoc, sdoc] or [sdoa, sdob])
     "width",    # bits to transfer per channel
     "t_cnvh",   # CNVH duration (minimum)
     "t_conv",   # CONV duration (minimum)
@@ -34,11 +36,8 @@ class ADC(Module):
 
         # collect sdo lines
         sdo = []
-        for i in string.ascii_lowercase:
-            try:
-                sdo.append(self._diff(pads, "sdo" + i))
-            except AttributeError:
-                break
+        for i in string.ascii_lowercase[:p.lanes]:
+            sdo.append(self._diff(pads, "sdo" + i))
         lanes = len(sdo)
 
         # set up counters for the four states CNVH, CONV, READ, RTT

@@ -8,7 +8,7 @@ import adc_ser, arty, impl
 class Top(impl.Impl):
     def __init__(self, plat):
         super().__init__(plat, clk=250e6)
-        params = adc_ser.ADCParams(width=16, channels=8,
+        params = adc_ser.ADCParams(width=16, channels=8, lanes=2,
                 t_cnvh=4, t_conv=57, t_rtt=4)
         self.submodules.adc = adc = adc_ser.ADC(
                 plat.request("adc_ser"), params)
