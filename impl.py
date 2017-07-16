@@ -33,7 +33,7 @@ class Impl(Module):
         )
 
         clk = plat.request(plat.default_clk_name)
-        self.submodules += io.CRG(clk)
+        self.submodules.crg = io.CRG(clk)
 
     def dummy_inputs(self, ins, load):
         sr_in = Signal(len(Cat(ins)), reset_less=True)

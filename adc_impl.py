@@ -10,8 +10,15 @@ class Top(impl.Impl):
         super().__init__(plat, clk=250e6)
         params = adc_ser.ADCParams(width=16, channels=8, lanes=2,
                 t_cnvh=4, t_conv=57, t_rtt=4)
-        self.submodules.adc = adc = adc_ser.ADC(
-                plat.request("adc_ser"), params)
+
+        adc_pads = plat.request("adc_ser")
+        self.submodules.adc = adc = adc_ser.ADC(adc_pads, params)
+
+        plat.add_period_constraint(adc_pads.clkout_p,
+                plat.default_clk_period)
+        plat.add_false_path_constraints(
+                plat.lookup_request(plat.default_clk_name),
+                adc_pads.clkout_p)
 
         self.dummy_inputs([adc.start], 1)
         self.dummy_outputs([adc.done, adc.reading] + adc.data, adc.done)

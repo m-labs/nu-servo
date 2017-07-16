@@ -12,8 +12,14 @@ class Top(impl.Impl):
         super().__init__(plat, clk=150e6)
         params = adc_ser.ADCParams(width=16, channels=8, lanes=2,
                 t_cnvh=4, t_conv=57, t_rtt=4)
-        self.submodules.adc = adc = adc_ser.ADC(
-                plat.request("adc_ser"), params)
+        adc_pads = plat.request("adc_ser")
+        self.submodules.adc = adc = adc_ser.ADC(adc_pads, params)
+
+        plat.add_period_constraint(adc_pads.clkout_p,
+                plat.default_clk_period)
+        plat.add_false_path_constraints(
+                plat.lookup_request(plat.default_clk_name),
+                adc_pads.clkout_p)
 
         w = iir.IIRWidths(state=25, coeff=18, adc=16,
                 asf=14, word=16, accu=48, shift=11,
