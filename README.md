@@ -1,6 +1,10 @@
-# IIR filter processor
+# NU-Servo
 
-[Design](https://github.com/m-labs/sinara/wiki/UrukulNovogornyServo)
+NU-Servo is a pipelined, resource efficient IIR filter (a.k.a PI controller). It is tailored to use the [Novogorny 8-channel ADC](https://github.com/m-labs/sinara/wiki/Novogorny) for monitoring the plant, the [Urukul 4-channel DDS](https://github.com/m-labs/sinara/wiki/Urukul) for driving the plant, and the [Kasli FPGA](https://github.com/m-labs/sinara/wiki/Kasli) for performing the computation.
+
+All three devices are part of the [Sinara](https://github.com/m-labs/sinara) ([Wiki](https://github.com/m-labs/sinara/wiki)) device family.
+
+The design and goals of the project are tracked in the Sinara wiki at [UrukulNovogornyServo](https://github.com/m-labs/sinara/wiki/UrukulNovogornyServo).
 
 ## Code
 
@@ -10,6 +14,17 @@
 * [iir_impl.py](iir_impl.py) Test implementation on Arty
 * [iir_transfer.py](iir_transfer.py) Transfer function simulation tool
 * [iir_sim.py](iir_sim.py) Verification and unittesting tool
+
+#### IIR pipeline
+
+[Pipeline notes](pipeline.ods)
+
+#### IIR states
+
+* idle: no activity
+* shifting: x0 (previously current measurement) -> x1 (old measurement) value shuffling in sate memory
+* loading: loading ADC values into x0
+* processing: computing y0 and extracting ftw/pow from memory
 
 ### ADC interface
 
@@ -23,16 +38,7 @@
 * [servo_impl.py](servo_impl.py) Test implementation of the ADC-IIR-DDS chain
   on Arty
 
-## IIR states
-
-* idle: no activity
-* shifting: x0 -> x1 value shifting in sate memory
-* loading: loading adc values into x0
-* processing: computing y0 and extracting ftw/pow from memory
-
-# IIR pipeline
-
-[Pipeline notes](pipeline.ods)
+## Pipeline
 
 ## Overall timing pipeline
 
