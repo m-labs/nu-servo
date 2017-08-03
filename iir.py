@@ -70,14 +70,14 @@ class DSP(Module):
         assert n_sign > 1
 
         self.comb += [
-                # n_signed
+                # signed
                 # self.clip.eq(p[-n_sign:] != Replicate(p[-1], sign)),
-                # unn_signed
+                # unsigned
                 self.clip.eq(p[-n_sign:] != 0),
                 self.output.eq(Mux(self.clip,
-                        # n_signed
+                        # signed
                         # Cat(Replicate(~p[-1], w.state - 1), p[-1]),
-                        # unn_signed
+                        # unsigned
                         Replicate(~p[-1], w.state - 1),
                         p[w.shift:])
                 )
