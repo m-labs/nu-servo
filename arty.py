@@ -9,26 +9,6 @@ from migen.build.generic_platform import *
 from migen.build.xilinx import XilinxPlatform, VivadoProgrammer
 
 
-class XilinxDDRInputImplS7(Module):
-    def __init__(self, i, o1, o2, clk):
-        self.specials += Instance("IDDR",
-                p_DDR_CLK_EDGE="SAME_EDGE_PIPELINED",
-                i_C=clk, i_CE=1, i_S=0, i_R=0,
-                o_D=i, i_Q1=o1, i_Q2=o2,
-        )
-
-
-class XilinxDDRInputS7:
-    @staticmethod
-    def lower(dr):
-        return XilinxDDRInputImplS7(dr.i, dr.o1, dr.o2, dr.clk)
-
-
-xilinx_s7_ddr_input_special_overrides = {
-    io.DDRInput:              XilinxDDRInputS7
-}
-
-
 _io = [
     ("user_led", 0, Pins("H5"), IOStandard("LVCMOS33")),
     ("user_led", 1, Pins("J5"), IOStandard("LVCMOS33")),
@@ -160,8 +140,3 @@ class Platform(XilinxPlatform):
         else:
             raise ValueError("{} programmer is not supported"
                              .format(self.programmer))
-
-    def get_verilog(self, *args, special_overrides=dict(), **kwargs):
-        special_overrides.update(xilinx_s7_ddr_input_special_overrides)
-        return super().get_verilog(*args, special_overrides=special_overrides,
-                **kwargs)
