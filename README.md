@@ -4,7 +4,7 @@ NU-Servo is a pipelined, resource efficient IIR filter (a.k.a PI controller). It
 
 All three devices are part of the [Sinara](https://github.com/m-labs/sinara) ([Wiki](https://github.com/m-labs/sinara/wiki)) device family.
 
-The design and goals of the project are tracked in the Sinara wiki at [UrukulNovogornyServo](https://github.com/m-labs/sinara/wiki/UrukulNovogornyServo).
+The design and goals of the project are tracked in the Sinara wiki at [NovoUrukulServo](https://github.com/m-labs/sinara/wiki/NovoUrukulServo).
 
 ## Code
 
