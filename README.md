@@ -11,7 +11,7 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 ### IIR processing core
 
 * [iir.py](iir.py) Main processing core
-* [iir_impl.py](iir_impl.py) Test implementation on Arty
+* [iir_impl.py](iir_impl.py) Test implementation on Kasli
 * [iir_transfer.py](iir_transfer.py) Transfer function simulation tool
 * [iir_sim.py](iir_sim.py) Verification and unittesting tool
 
@@ -31,12 +31,12 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 * [adc_ser.py](adc_ser.py) Multi-lane LVDS/CMOS ADC interface for LTC2320-16 or
   similar
 * [adc_sim.py](adc_sim.py) ADC interface simulation and test bench
-* [adc_impl.py](adc_impl.py) Test implementation on Arty
+* [adc_impl.py](adc_impl.py) Test implementation on Kasli
 
 ### Servo
 
 * [servo_impl.py](servo_impl.py) Test implementation of the ADC-IIR-DDS chain
-  on Arty
+  on Kasli
 
 ## Pipeline
 

@@ -1,6 +1,6 @@
 from migen import *
 
-import iir, arty, impl
+import iir, impl
 
 class Top(impl.Impl):
     def __init__(self, plat):
@@ -30,6 +30,6 @@ class Top(impl.Impl):
 
 
 if __name__ == "__main__":
-    plat = arty.Platform()
+    plat = impl.Platform()
     top = Top(plat)
     plat.build(top)

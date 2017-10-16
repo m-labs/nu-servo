@@ -2,7 +2,7 @@ from migen import *
 from migen.build.generic_platform import *
 from migen.genlib import io
 
-import adc_ser, arty, impl
+import adc_ser, impl
 
 
 class Top(impl.Impl):
@@ -25,6 +25,6 @@ class Top(impl.Impl):
 
 
 if __name__ == "__main__":
-    plat = arty.Platform()
+    plat = impl.Platform()
     top = Top(plat)
     plat.build(top)
