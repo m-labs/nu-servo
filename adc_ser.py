@@ -19,7 +19,10 @@ ADCParams = namedtuple("ADCParams", [
     "t_cnvh",   # CNVH duration (minimum)
     "t_conv",   # CONV duration (minimum)
     "t_rtt",    # upper estimate for clock round trip time from
-                # sck at the FPGA to clkout at the FPGA
+                # sck at the FPGA to clkout at the FPGA.
+                # this avoids having synchronizers and another counter
+                # to signal end-of transfer (CLKOUT cycles)
+                # and it ensures fixed latency early in the pipeline
 ])
 
 
@@ -44,6 +47,7 @@ class ADC(Module):
         t_read = p.width*p.channels//p.lanes//2  # DDR
         assert 2*p.lanes*t_read == p.width*p.channels
         assert all(_ > 0 for _ in (p.t_cnvh, p.t_conv, p.t_rtt))
+        assert p.t_conv > 1
         count = Signal(max=max(p.t_cnvh, p.t_conv, t_read, p.t_rtt) - 1,
                 reset_less=True)
         count_load = Signal.like(count)
@@ -58,13 +62,9 @@ class ADC(Module):
                 )
         ]
 
+        self.clocking = Signal(reset_less=True)
         sck_en = Signal()
-        self._sck_en = Signal(reset_less=True)  # expose for testbench
-        self.sync += self._sck_en.eq(sck_en)
-        # technically it could be "0, sck_en" because we
-        # don't care about phase here and only about delay
-        # but let's prefer not having to mess with the duration values
-        # return clkout will always be used in the correct phase
+        self.sync += self.clocking.eq(sck_en)
         self.specials += io.DDROutput(0, sck_en,
                 self._diff(pads, "sck", output=True))
         self.submodules.fsm = fsm = FSM("IDLE")
@@ -76,7 +76,7 @@ class ADC(Module):
                 )
         )
         fsm.act("CNVH",
-                count_load.eq(p.t_conv - 1),
+                count_load.eq(p.t_conv - 2),  # sck ODDR delay
                 pads.cnv_b.eq(1),
                 If(count_done,
                     NextState("CONV")
@@ -85,21 +85,17 @@ class ADC(Module):
         fsm.act("CONV",
                 count_load.eq(t_read - 1),
                 If(count_done,
-                    sck_en.eq(1),  # ODDR pipeline delay
                     NextState("READ")
                 )
         )
         fsm.act("READ",
                 self.reading.eq(1),
-                count_load.eq(p.t_rtt - 1),
+                count_load.eq(p.t_rtt),  # sck ODDR delay
+                sck_en.eq(1),
                 If(count_done,
                     NextState("RTT")
-                ).Else(
-                    sck_en.eq(1)  # ODDR pipeline delay
                 )
         )
-        # this avoids having synchronizers to signal end-of transfer (CLKOUT
-        # and it ensures fixed latency early in the pipeline
         fsm.act("RTT",
                 self.reading.eq(1),
                 If(count_done,
@@ -112,22 +108,21 @@ class ADC(Module):
                 # falling clkout makes two bits available
                 self.cd_ret.clk.eq(~self._diff(pads, "clkout")),
         ]
-        self._clkout_en = Signal(reset=1)  # expose for testbench
         k = p.channels//p.lanes
         assert 2*t_read == k*p.width
         for i, sdo in enumerate(sdo):
             sdo_sr = Signal(2*t_read - 2)
-            sdo_dat = Signal(2)
-            self.specials += io.DDRInput(sdo, sdo_dat[1], sdo_dat[0],
+            sdo_ddr = Signal(2)
+            self.specials += io.DDRInput(sdo, sdo_ddr[1], sdo_ddr[0],
                     self.cd_ret.clk)
             self.sync.ret += [
-                    If(self.reading & self._clkout_en,
-                        sdo_sr.eq(Cat(sdo_dat, sdo_sr))
+                    If(self.reading,
+                        sdo_sr.eq(Cat(sdo_ddr, sdo_sr))
                     )
             ]
             self.comb += [
                     Cat(reversed([self.data[i*k + j] for j in range(k)])).eq(
-                        Cat(sdo_dat, sdo_sr))
+                        Cat(sdo_ddr, sdo_sr))
             ]
 
 

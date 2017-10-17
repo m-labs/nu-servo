@@ -98,11 +98,13 @@ class TB(Module):
                     )
             ]
 
-        self.submodules.dut = dut = adc_ser.ADC(self, params, *args, **kwargs)
+        self.submodules.dut = dut = CEInserter(["ret"])(
+                adc_ser.ADC(self, params, *args, **kwargs))
         adc_clk_rec = Signal()
         self.comb += [
-                sck_en.eq(self._dly(dut._sck_en, 1)),
-                dut._clkout_en.eq(self._dly(sck_en)),
+                sck_en.eq(self._dly(dut.clocking, 1)),
+                # dut._clkout_en.eq(self._dly(sck_en)),
+                dut.ce_ret.eq(self._dly(sck_en)),
                 adc_clk_rec.eq(self._dly(self.sck, 1)),
                 self.clkout.eq(self._dly(adc_clk_rec)),
         ]
