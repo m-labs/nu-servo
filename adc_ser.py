@@ -38,11 +38,11 @@ class ADC(Module):
         sdo = []
         for i in string.ascii_lowercase[:p.lanes]:
             sdo.append(self._diff(pads, "sdo" + i))
-        lanes = len(sdo)
+        assert p.lanes == len(sdo)
 
         # set up counters for the four states CNVH, CONV, READ, RTT
-        t_read = p.width*p.channels//lanes//2  # DDR
-        assert 2*lanes*t_read == p.width*p.channels
+        t_read = p.width*p.channels//p.lanes//2  # DDR
+        assert 2*p.lanes*t_read == p.width*p.channels
         assert all(_ > 0 for _ in (p.t_cnvh, p.t_conv, p.t_rtt))
         count = Signal(max=max(p.t_cnvh, p.t_conv, t_read, p.t_rtt) - 1,
                 reset_less=True)
@@ -95,7 +95,7 @@ class ADC(Module):
                 If(count_done,
                     NextState("RTT")
                 ).Else(
-                    sck_en.eq(1)
+                    sck_en.eq(1)  # ODDR pipeline delay
                 )
         )
         # this avoids having synchronizers to signal end-of transfer (CLKOUT
@@ -113,21 +113,21 @@ class ADC(Module):
                 self.cd_ret.clk.eq(~self._diff(pads, "clkout")),
         ]
         self._clkout_en = Signal(reset=1)  # expose for testbench
-        k = p.channels//lanes
+        k = p.channels//p.lanes
         assert 2*t_read == k*p.width
         for i, sdo in enumerate(sdo):
-            buf = Signal(2*t_read - 2)
-            dat = Signal(2)
-            self.specials += io.DDRInput(sdo, dat[1], dat[0],
+            sdo_sr = Signal(2*t_read - 2)
+            sdo_dat = Signal(2)
+            self.specials += io.DDRInput(sdo, sdo_dat[1], sdo_dat[0],
                     self.cd_ret.clk)
             self.sync.ret += [
                     If(self.reading & self._clkout_en,
-                        buf.eq(Cat(dat, buf))
+                        sdo_sr.eq(Cat(sdo_dat, sdo_sr))
                     )
             ]
             self.comb += [
                     Cat(reversed([self.data[i*k + j] for j in range(k)])).eq(
-                        Cat(dat, buf))
+                        Cat(sdo_dat, sdo_sr))
             ]
 
 
