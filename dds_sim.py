@@ -8,72 +8,72 @@ import dds_ser
 
 
 class TB(Module):
-    def __init__(self, params, *args, **kwargs):
-        self.params = p = params
+    def __init__(self, *args, **kwargs):
+        p = dds_ser.SPIParams(channels=4, width=8 + 32 + 16 + 16, clk=2)
 
-        self.cs_b = Signal()
-        self.sck = Signal()
+        self.cs_n = Signal()
+        self.clk = Signal()
         self.mosi = [Signal() for i in range(p.channels)]
+        for i, m in enumerate(self.mosi):
+            setattr(self, "mosi{}".format(i), m)
         self.miso = Signal()
         self.io_update = Signal()
 
+        self.submodules.dut = dut = dds_ser.SPIDDS(self, p, *args, **kwargs)
+
+        clk0 = Signal()
+        self.sync += clk0.eq(self.clk)
+        sample = Signal()
+        self.comb += sample.eq(Cat(self.clk, clk0) == 0b10)
+
         self.dds = []
-
-        stb_shift = Signal()
-        stb_sample = Signal()
-        sck_old = Signal()
-        self.sync += sck_old.eq(self.sck)
-        self.comb += [
-                stb_shift.eq(Cat(sck_old, self.sck) == 0b01),
-                stb_sample.eq(Cat(sck_old, self.sck) == 0b10)
-        ]
-
-        stb = Signal()
-        cs_b_old = Signal()
-        self.sync += cs_b_old.eq(self.cs_b)
-        self.comb += [
-                stb.eq(Cat(cs_b_old, self.cs_b) == 0b10)
-        ]
         for i in range(p.channels):
-            dds = Record([("cmd", 8), ("ftw", 32), ("pow", 16),
-                ("asf", 14), ("pad", 2), ("stb", 1)])
+            dds = Record([("asf", 16), ("pow", 16), ("ftw", 32), ("cmd", 8)])
             sr = Signal(len(dds) + 1)
             self.comb += [
                     dds.raw_bits().eq(sr),
-                    dds.stb.eq(stb)
             ]
             self.sync += [
-                    If(stb_sample,
-                        sr[0].eq(self.mosi[i]),
-                    ),
-                    If(stb_shift,
-                        sr[1:].eq(sr),
+                    If(~self.cs_n & sample,
+                        sr.eq(Cat(self.mosi[i], sr))
                     )
             ]
+            self.dds.append(dds)
 
-        self.submodules.dut = dut = dds_ser.DDS(self, params, *args, **kwargs)
+    @passive
+    def watch(self):
+        while True:
+            if (yield self.io_update):
+                for dds in self.dds:
+                    v = yield from [(yield getattr(dds, k))
+                            for k in "cmd ftw pow asf".split()]
+                    print([hex(_) for _ in v])
+            yield
+
 
 
 def main():
-    params = dds_ser.DDSParams(width=8, channels=4, div=0)
-    tb = TB(params)
+    tb = TB()
 
     def run(tb):
         dut = tb.dut
-        #for i, ch in enumerate(dut.data):
-        #    yield ch.eq(0)
-        assert (yield dut.done)
+        for i, ch in enumerate(dut.data):
+            yield ch.eq(((((0
+                << 8 | i | 0x10)
+                << 32 | i | 0x20)
+                << 16 | i | 0x30)
+                << 16 | i | 0x40))
+        # assert (yield dut.done)
         yield dut.start.eq(1)
         yield
         yield dut.start.eq(0)
         yield
+        yield
         assert not (yield dut.done)
         while not (yield dut.done):
             yield
-        x = (yield from [(yield d) for d in tb.dds])
-        print(x)
 
-    run_simulation(tb, [run(tb)], vcd_name="dds.vcd")
+    run_simulation(tb, [tb.watch(), run(tb)], vcd_name="dds.vcd")
 
 
 if __name__ == "__main__":
