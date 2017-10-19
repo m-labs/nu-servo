@@ -1,16 +1,12 @@
 import logging
-import string
 
 from migen import *
-from migen.genlib import io
 
-import dds_ser
+from dds_ser import DDSParams, DDS
 
 
 class TB(Module):
-    def __init__(self, *args, **kwargs):
-        p = dds_ser.SPIParams(channels=4, width=8 + 32 + 16 + 16, clk=1)
-
+    def __init__(self, p, *args, **kwargs):
         self.cs_n = Signal()
         self.clk = Signal()
         self.mosi = [Signal() for i in range(p.channels)]
@@ -19,14 +15,14 @@ class TB(Module):
         self.miso = Signal()
         self.io_update = Signal()
 
-        self.submodules.dut = dut = dds_ser.SPIDDS(self, p, *args, **kwargs)
+        self.submodules.dds = dds = DDS(self, p, *args, **kwargs)
 
         clk0 = Signal()
         self.sync += clk0.eq(self.clk)
         sample = Signal()
         self.comb += sample.eq(Cat(self.clk, clk0) == 0b10)
 
-        self.dds = []
+        self.ddss = []
         for i in range(p.channels):
             dds = Record([("ftw", 32), ("pow", 16), ("asf", 16), ("cmd", 8)])
             sr = Signal(len(dds) + 1)
@@ -38,13 +34,13 @@ class TB(Module):
                         sr.eq(Cat(self.mosi[i], sr))
                     )
             ]
-            self.dds.append(dds)
+            self.ddss.append(dds)
 
     @passive
     def watch(self):
         while True:
             if (yield self.io_update):
-                for dds in self.dds:
+                for dds in self.ddss:
                     v = yield from [(yield getattr(dds, k))
                             for k in "cmd ftw pow asf".split()]
                     print([hex(_) for _ in v])
@@ -53,10 +49,11 @@ class TB(Module):
 
 
 def main():
-    tb = TB()
+    p = DDSParams(channels=4, width=8 + 32 + 16 + 16, clk=1)
+    tb = TB(p)
 
     def run(tb):
-        dut = tb.dut
+        dut = tb.dds
         for i, ch in enumerate(dut.profile):
             yield ch.eq((((0
                 << 16 | i | 0x20)

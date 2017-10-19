@@ -6,9 +6,9 @@ import spi
 
 logger = logging.getLogger(__name__)
 
-SPIParams = spi.SPIParams
+DDSParams = spi.SPIParams
 
-class SPIDDS(spi.SPISimple):
+class DDS(spi.SPISimple):
     def __init__(self, pads, params):
         super().__init__(pads, params)
 
