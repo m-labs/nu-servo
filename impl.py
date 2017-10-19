@@ -8,7 +8,7 @@ class Impl(Module):
     def __init__(self, plat, clk=150e6):
         self.platform = plat
         plat.default_clk_period = 1e9/clk
-        plat.constraint_manager.available.append(
+        plat.constraint_manager.available.extend([
                 ("adc_ser", 0,
                     Subsignal("sck_p", Pins("V4"), IOStandard("LVDS_25")),
                     Subsignal("sck_n", Pins("W4"), IOStandard("LVDS_25")),
@@ -27,8 +27,36 @@ class Impl(Module):
                     Subsignal("sdoc_n", Pins("Y1"), IOStandard("LVDS_25")),
                     Subsignal("sdod_p", Pins("U3"), IOStandard("LVDS_25")),
                     Subsignal("sdod_n", Pins("V3"), IOStandard("LVDS_25")),
+                ),
+
+                ("dds_ser", 0,
+                    Subsignal("clk_p", Pins("J19"), IOStandard("LVDS_25")),
+                    Subsignal("clk_n", Pins("H19"), IOStandard("LVDS_25")),
+
+                    Subsignal("cs_n_p", Pins("N20"), IOStandard("LVDS_25")),
+                    Subsignal("cs_n_n", Pins("M20"), IOStandard("LVDS_25")),
+
+                    Subsignal("io_update_p", Pins("K13"), IOStandard("LVDS_25")),
+                    Subsignal("io_update_n", Pins("K14"), IOStandard("LVDS_25")),
+
+                    Subsignal("mosi0_p", Pins("H13"), IOStandard("LVDS_25")),
+                    Subsignal("mosi0_n", Pins("G13"), IOStandard("LVDS_25")),
+                    Subsignal("mosi1_p", Pins("G15"), IOStandard("LVDS_25")),
+                    Subsignal("mosi1_n", Pins("G16"), IOStandard("LVDS_25")),
+                    Subsignal("mosi2_p", Pins("J14"), IOStandard("LVDS_25")),
+                    Subsignal("mosi2_n", Pins("H14"), IOStandard("LVDS_25")),
+                    Subsignal("mosi3_p", Pins("G17"), IOStandard("LVDS_25")),
+                    Subsignal("mosi3_n", Pins("G18"), IOStandard("LVDS_25")),
+                    Subsignal("mosi4_p", Pins("J15"), IOStandard("LVDS_25")),
+                    Subsignal("mosi4_n", Pins("H15"), IOStandard("LVDS_25")),
+                    Subsignal("mosi5_p", Pins("H17"), IOStandard("LVDS_25")),
+                    Subsignal("mosi5_n", Pins("H18"), IOStandard("LVDS_25")),
+                    Subsignal("mosi6_p", Pins("J22"), IOStandard("LVDS_25")),
+                    Subsignal("mosi6_n", Pins("H22"), IOStandard("LVDS_25")),
+                    Subsignal("mosi7_p", Pins("L19"), IOStandard("LVDS_25")),
+                    Subsignal("mosi7_n", Pins("L20"), IOStandard("LVDS_25")),
                 )
-        )
+        ])
 
         clk = plat.request(plat.default_clk_name)
         self.submodules.crg = io.CRG(clk)
