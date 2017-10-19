@@ -3,6 +3,7 @@ from collections import namedtuple
 
 from migen import *
 from migen.genlib.fsm import FSM, NextState
+from migen.genlib import io
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class SPISimple(Module):
         cs_n = self._diff(pads, "cs_n", output=True)
 
         clk = self._diff(pads, "clk", output=True)
-        cnt = Signal(max=p.clk, reset_less=True)
+        cnt = Signal(max=max(2, p.clk), reset_less=True)
         cnt_done = Signal()
         cnt_next = Signal()
         self.comb += cnt_done.eq(cnt == 0)
@@ -53,7 +54,11 @@ class SPISimple(Module):
 
         bits = Signal(max=p.width, reset_less=True)
 
-        self.submodules.fsm = fsm = FSM("IDLE")
+        self.submodules.fsm = fsm = CEInserter()(FSM("IDLE"))
+
+        self.comb += [
+                fsm.ce.eq(cnt_done)
+        ]
 
         fsm.act("IDLE",
                 self.done.eq(1),
@@ -65,29 +70,27 @@ class SPISimple(Module):
         )
         fsm.act("SETUP",
                 cnt_next.eq(1),
-                If(cnt_done,
-                    If(bits == 0,
-                        NextState("IDLE")
-                    ).Else(
-                        NextState("HOLD")
-                    )
+                If(bits == 0,
+                    NextState("IDLE")
+                ).Else(
+                    NextState("HOLD")
                 )
         )
         fsm.act("HOLD",
                 cnt_next.eq(1),
                 clk.eq(1),
-                If(cnt_done,
-                    NextState("SETUP")
-                )
+                NextState("SETUP")
         )
 
         self.sync += [
-            If(fsm.ongoing("HOLD") & cnt_done,
-                bits.eq(bits - 1),
-                [d[1:].eq(d) for d in self.data]
-            ),
-            If(fsm.ongoing("IDLE"),
-                bits.eq(p.width - 1)
+            If(fsm.ce,
+                If(fsm.before_leaving("HOLD"),
+                    bits.eq(bits - 1),
+                    [d[1:].eq(d) for d in self.data]
+                ),
+                If(fsm.ongoing("IDLE"),
+                    bits.eq(p.width - 1)
+                )
             )
         ]
 
