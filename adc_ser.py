@@ -62,9 +62,9 @@ class ADC(Module):
                 )
         ]
 
-        self.clocking = Signal(reset_less=True)
+        self._sck_en = Signal(reset_less=True)
         sck_en = Signal()
-        self.sync += self.clocking.eq(sck_en)
+        self.sync += self._sck_en.eq(sck_en)  # ODDR delay
         self.specials += io.DDROutput(0, sck_en,
                 self._diff(pads, "sck", output=True))
         self.submodules.fsm = fsm = FSM("IDLE")
@@ -104,6 +104,7 @@ class ADC(Module):
         )
 
         self.clock_domains.cd_ret = ClockDomain("ret", reset_less=True)
+        self._sck_en_ret = Signal(reset=1)  # CE for simulation
         self.comb += [
                 # falling clkout makes two bits available
                 self.cd_ret.clk.eq(~self._diff(pads, "clkout")),
@@ -116,7 +117,7 @@ class ADC(Module):
             self.specials += io.DDRInput(sdo, sdo_ddr[1], sdo_ddr[0],
                     self.cd_ret.clk)
             self.sync.ret += [
-                    If(self.reading,
+                    If(self.reading & self._sck_en_ret,
                         sdo_sr.eq(Cat(sdo_ddr, sdo_sr))
                     )
             ]

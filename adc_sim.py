@@ -3,7 +3,8 @@ import string
 
 from migen import *
 from migen.genlib import io
-import adc_ser
+
+from adc_ser import ADC, ADCParams
 
 
 class DDROutputImpl(Module):
@@ -98,13 +99,11 @@ class TB(Module):
                     )
             ]
 
-        self.submodules.dut = dut = CEInserter(["ret"])(
-                adc_ser.ADC(self, params, *args, **kwargs))
+        self.submodules.adc = adc = ADC(self, params, *args, **kwargs)
         adc_clk_rec = Signal()
         self.comb += [
-                sck_en.eq(self._dly(dut.clocking, 1)),
-                # dut._clkout_en.eq(self._dly(sck_en)),
-                dut.ce_ret.eq(self._dly(sck_en)),
+                sck_en.eq(self._dly(adc._sck_en, 1)),
+                adc._sck_en_ret.eq(self._dly(sck_en)),
                 adc_clk_rec.eq(self._dly(self.sck, 1)),
                 self.clkout.eq(self._dly(adc_clk_rec)),
         ]
@@ -117,12 +116,12 @@ class TB(Module):
 
 
 def main():
-    params = adc_ser.ADCParams(width=8, channels=4, lanes=2,
+    params = ADCParams(width=8, channels=4, lanes=2,
             t_cnvh=3, t_conv=5, t_rtt=4)
     tb = TB(params)
 
     def run(tb):
-        dut = tb.dut
+        dut = tb.adc
         for i, ch in enumerate(tb.data):
             yield ch.eq(i)
         assert (yield dut.done)
