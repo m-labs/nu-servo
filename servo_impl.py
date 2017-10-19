@@ -2,7 +2,7 @@ from migen import *
 from migen.build.generic_platform import *
 from migen.genlib import io
 
-import adc_ser, iir, impl
+import adc_ser, iir, dds_ser, impl
 
 
 class Top(impl.Impl):
@@ -31,6 +31,17 @@ class Top(impl.Impl):
                 proc.start.eq(adc.done),
         ]
 
+        dds_pads = plat.request("dds_ser")
+        params = dds_ser.SPIParams(width=8 + 32 + 16 + 16, channels=8, clk=1)
+        self.submodules.dds = dds = dds_ser.SPIDDS(dds_pads, params)
+
+        for i, j in zip(proc.dds, dds.profile):
+            self.comb += j.eq(i)
+
+        self.comb += [
+                dds.start.eq(proc.done)
+        ]
+
         m_coeff = proc.m_coeff.get_port(write_capable=True)
         m_state = proc.m_state.get_port(write_capable=True)
         self.specials += m_coeff, m_state
@@ -45,7 +56,7 @@ class Top(impl.Impl):
 
         outs = [proc.shifting, proc.loading, proc.processing, proc.done,
                 m_state.dat_r, m_coeff.dat_r,
-                adc.reading, adc.done] + proc.dds
+                adc.reading, adc.done, dds.done]
         self.dummy_outputs(outs, proc.done)
 
 
