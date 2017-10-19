@@ -9,7 +9,7 @@ import dds_ser
 
 class TB(Module):
     def __init__(self, *args, **kwargs):
-        p = dds_ser.SPIParams(channels=4, width=8 + 32 + 16 + 16, clk=2)
+        p = dds_ser.SPIParams(channels=4, width=8 + 32 + 16 + 16, clk=1)
 
         self.cs_n = Signal()
         self.clk = Signal()
@@ -28,7 +28,7 @@ class TB(Module):
 
         self.dds = []
         for i in range(p.channels):
-            dds = Record([("asf", 16), ("pow", 16), ("ftw", 32), ("cmd", 8)])
+            dds = Record([("ftw", 32), ("pow", 16), ("asf", 16), ("cmd", 8)])
             sr = Signal(len(dds) + 1)
             self.comb += [
                     dds.raw_bits().eq(sr),
@@ -57,12 +57,11 @@ def main():
 
     def run(tb):
         dut = tb.dut
-        for i, ch in enumerate(dut.data):
-            yield ch.eq(((((0
-                << 8 | i | 0x10)
-                << 32 | i | 0x20)
+        for i, ch in enumerate(dut.profile):
+            yield ch.eq((((0
+                << 16 | i | 0x20)
                 << 16 | i | 0x30)
-                << 16 | i | 0x40))
+                << 32 | i | 0x40))
         # assert (yield dut.done)
         yield dut.start.eq(1)
         yield
