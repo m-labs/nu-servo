@@ -33,6 +33,12 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 * [adc_sim.py](adc_sim.py) ADC interface simulation and test bench
 * [adc_impl.py](adc_impl.py) Test implementation on Kasli
 
+### DDS interface
+
+* [dds_ser.py](dds_ser.py) Multi-lane LVDS SPI AD9910 interface
+* [dds_sim.py](dds_sim.py) DDS interface simulation and test bench
+* [dds_impl.py](dds_impl.py) Test implementation on Kasli
+
 ### Servo
 
 * [servo_impl.py](servo_impl.py) Test implementation of the ADC-IIR-DDS chain
