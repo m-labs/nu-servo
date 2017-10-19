@@ -42,7 +42,7 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 ### Servo
 
 * [servo_impl.py](servo_impl.py) Test implementation of the ADC-IIR-DDS chain
-  on Kasli
+* [servo_sim.py](servo_sim.py) Full ADC-IIR-DDS pipeline test
 
 ## Pipeline
 
