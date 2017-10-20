@@ -44,7 +44,7 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 * [servo_impl.py](servo_impl.py) Test implementation of the ADC-IIR-DDS chain
 * [servo_sim.py](servo_sim.py) Full ADC-IIR-DDS pipeline test
 
-## Pipeline
+## Design aspects
 
 ## Overall timing pipeline
 
@@ -65,6 +65,19 @@ DDS                               CMD PROF WAIT IO_UP
 SLOT1: 4 + 57 + 16 + 6 + 2 + 8 + 41 = 134
 SLOT2: 16 + 128 + 1 = 145
 ```
+
+## Resource usage
+
+For 8 channels:
+
+* 1 DSP48E1
+* 2 RAMB36
+* ~900 LUTs
+* ~1500 FFs
+
+## Timing
+
+* > 166 MHz on Kasli
 
 ## TODO
 
