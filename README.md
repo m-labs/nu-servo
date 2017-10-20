@@ -4,7 +4,7 @@ NU-Servo is a pipelined, resource efficient IIR filter (a.k.a PI controller). It
 
 All three devices are part of the [Sinara](https://github.com/m-labs/sinara) ([Wiki](https://github.com/m-labs/sinara/wiki)) device family.
 
-The design and goals of the project are tracked in the Sinara wiki at [NovoUrukulServo](https://github.com/m-labs/sinara/wiki/NovoUrukulServo).
+The design and goals of the project are tracked in the Sinara wiki at [NovoUrukulServo](doc/NovoUrukulServo.md).
 
 ## Code
 
@@ -17,14 +17,14 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 
 #### IIR pipeline
 
-[Pipeline notes](pipeline.ods)
+* [Pipeline plan](doc/pipeline.ods)
 
 #### IIR states
 
 * idle: no activity
-* shifting: x0 (previously current measurement) -> x1 (old measurement) value shuffling in sate memory
 * loading: loading ADC values into x0
 * processing: computing y0 and extracting ftw/pow from memory
+* shifting: x0 (previously current measurement) -> x1 (old measurement) value shuffling in sate memory
 
 ### ADC interface
 
