@@ -80,7 +80,7 @@ class Top(impl.Impl):
                 self.start]
         for ctrl in self.proc.ctrl:
             ins += ctrl.flatten()
-        self.dummy_inputs(ins, self.start)
+        self.dummy_inputs(ins, 1)
 
         outs = [m_state.dat_r, m_coeff.dat_r]
         self.dummy_outputs(outs, self.dds.done)
