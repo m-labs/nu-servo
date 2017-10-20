@@ -8,53 +8,79 @@ import adc_sim, iir, dds_sim
 
 class Servo(Module):
     def __init__(self):
-        params = adc_sim.ADCParams(width=16, channels=8, lanes=4,
+        adc_p = adc_sim.ADCParams(width=16, channels=8, lanes=4,
                 t_cnvh=4, t_conv=57, t_rtt=4)
-        self.submodules.adc_tb = adc_tb = adc_sim.TB(params)
+        self.submodules.adc_tb = adc_sim.TB(adc_p)
+        self.adc = self.adc_tb.adc
 
-        w = iir.IIRWidths(state=25, coeff=18, adc=16,
+        proc_p = iir.IIRWidths(state=25, coeff=18, adc=16,
                 asf=14, word=16, accu=48, shift=11,
                 channel=3, profile=5)
-        self.submodules.proc = proc = iir.IIR(w)
+        self.submodules.proc = proc = iir.IIR(proc_p)
 
-        for i, j in zip(adc_tb.adc.data, proc.adc):
-            self.comb += j.eq(i)
+        dds_p = dds_sim.DDSParams(width=8 + 32 + 16 + 16,
+                channels=adc_p.channels, clk=1)
+        self.submodules.dds_tb = dds_sim.TB(dds_p)
+        self.dds = self.dds_tb.dds
 
+        t_adc = (adc_p.t_cnvh + adc_p.t_conv + adc_p.t_rtt +
+            adc_p.channels*adc_p.width//2//adc_p.lanes)
+        t_iir = ((1 + 4 + 1) << proc_p.channel) + 1
+        t_dds = (dds_p.width*2 + 1)*dds_p.clk + 1
+        t_cycle = max(t_adc, t_iir, t_dds)
+
+        for i, j, k, l in zip(self.adc.data, self.proc.adc,
+                self.proc.dds, self.dds.profile):
+            self.comb += j.eq(i), l.eq(k)
+
+        self.start = Signal()
+        cnt = Signal(max=t_cycle)
+        cnt_done = Signal()
+        token = Signal(2)
+        self.done = Signal()
         self.comb += [
-                proc.start.eq(adc_tb.adc.done),
+                cnt_done.eq(cnt == 0),
+                self.adc.start.eq(self.start & cnt_done),
+                self.proc.start.eq(token[0] & self.adc.done),
+                self.dds.start.eq(token[1] & self.proc.shifting),
+                self.done.eq(self.dds.done),
+        ]
+        self.sync += [
+                If(~cnt_done,
+                    cnt.eq(cnt - 1),
+                ),
+                If(self.adc.done,
+                    token[0].eq(0),
+                ),
+                If(self.adc.start,
+                    cnt.eq(t_cycle - 1),
+                    token[0].eq(1)
+                ),
+                If(self.proc.shifting,
+                    token[1].eq(0),
+                ),
+                If(self.proc.start,
+                    token[1].eq(token[0]),
+                )
         ]
 
-        params = dds_sim.DDSParams(width=8 + 32 + 16 + 16, channels=8, clk=1)
-        self.submodules.dds_tb = dds_tb = dds_sim.TB(params)
-
-        for i, j in zip(proc.dds, dds_tb.dds.profile):
-            self.comb += j.eq(i)
-
-        self.comb += [
-                dds_tb.dds.start.eq(proc.done),
-                adc_tb.adc.start.eq(dds_tb.dds.done)
-        ]
-
-        m_coeff = proc.m_coeff.get_port(write_capable=True)
-        m_state = proc.m_state.get_port(write_capable=True)
+        m_coeff = self.proc.m_coeff.get_port(write_capable=True)
+        m_state = self.proc.m_state.get_port(write_capable=True)
         self.specials += m_coeff, m_state
 
     def test(self):
-        for i in range(3):
-            yield
-        while not (yield self.dds_tb.dds.done):
-            yield
+        assert (yield self.done)
+        yield self.start.eq(1)
         yield
-        while not (yield self.dds_tb.dds.done):
+        # assert not (yield self.done)
+        while not (yield self.done):
             yield
-        yield
-        while not (yield self.dds_tb.dds.done):
+        while (yield self.done):
             yield
-        yield
-        while not (yield self.dds_tb.dds.done):
+        while not (yield self.done):
             yield
-        yield
-
+        while (yield self.done):
+            yield
 
 if __name__ == "__main__":
     servo = Servo()
