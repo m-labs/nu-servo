@@ -57,13 +57,13 @@ DDS: 8*16 ns CMD = 8, 64*2*8 ns PROF = 128, SPI WAIT = 1, IO_UPDATE = 1
 
 ADC CONVH CONV READ RTT
     4     57   16   8
-IIR              SHIFT LOAD  PROC
-                 16    8     41
-DDS                              CMD PROF WAIT IO_UP
-                                 8   128  1    1
+IIR                    LOAD  PROC SHIFT
+                       8     41   16
+DDS                               CMD PROF WAIT IO_UP
+                                  16  128  1    1
 
 SLOT1: 4 + 57 + 16 + 6 + 2 + 8 + 41 = 134
-SLOT2: 8 + 128 + 1 + 1 = 138
+SLOT2: 16 + 128 + 1 = 145
 ```
 
 ## TODO

@@ -150,13 +150,6 @@ class IIR(Module):
                 self.done.eq(1),
                 state_clr.eq(1),
                 If(self.start,
-                    NextState("SHIFT")
-                )
-        )
-        fsm.act("SHIFT",
-                self.shifting.eq(1),
-                If(state == (2 << w.channel) - 1,
-                    state_clr.eq(1),
                     NextState("LOAD")
                 )
         )
@@ -173,6 +166,13 @@ class IIR(Module):
                 # this is technically wasting three cycles
                 # (one for setting stage, and phase=2,3 with stage[2])
                 If(stage == 0,
+                    state_clr.eq(1),
+                    NextState("SHIFT")
+                )
+        )
+        fsm.act("SHIFT",
+                self.shifting.eq(1),
+                If(state == (2 << w.channel) - 1,
                     NextState("IDLE")
                 )
         )
@@ -412,37 +412,23 @@ class IIR(Module):
         while not (yield self.done):
             yield
 
-        x0s = []
-        # old states
-        for i in range(1 << w.channel):
-            x0s.append((yield from self.get_state(i, coeff="x0")))
-
         yield self.start.eq(1)
         yield
         yield self.start.eq(0)
         yield
         assert not (yield self.done)
-        assert (yield self.shifting)
-        while (yield self.shifting):
-            yield
-
-        # check x shifting
-        for i, x0 in enumerate(x0s):
-            x1 = yield from self.get_state(i, coeff="x1")
-            assert x1 == x0, (hex(x1), hex(x0))
-            logger.debug("adc[%d] x0=%x x1=%x", i, x0, x1)
-
         assert (yield self.loading)
         while (yield self.loading):
             yield
 
+        x0s = []
         # check adc loading
-        for i, x1 in enumerate(x0s):
+        for i in range(1 << w.channel):
             v_adc = signed((yield self.adc[i]), w.adc)
             x0 = yield from self.get_state(i, coeff="x0")
+            x0s.append(x0)
             assert v_adc << (w.state - w.adc) == x0, (hex(v_adc), hex(x0))
-            logger.debug("adc[%d] adc=%x x0=%x x1=%x", i, v_adc, x0, x1)
-        del x0s
+            logger.debug("adc[%d] adc=%x x0=%x", i, v_adc, x0)
 
         data = []
         # predict output
@@ -497,6 +483,16 @@ class IIR(Module):
         assert (yield self.processing)
         while (yield self.processing):
             yield
+
+        assert (yield self.shifting)
+        while (yield self.shifting):
+            yield
+
+        # check x shifting
+        for i, x0 in enumerate(x0s):
+            x1 = yield from self.get_state(i, coeff="x1")
+            assert x1 == x0, (hex(x1), hex(x0))
+            logger.debug("adc[%d] x0=%x x1=%x", i, x0, x1)
 
         # check new state
         for i in range(1 << w.channel):
