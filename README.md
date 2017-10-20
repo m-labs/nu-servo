@@ -4,7 +4,7 @@ NU-Servo is a pipelined, resource efficient IIR filter (a.k.a PI controller). It
 
 All three devices are part of the [Sinara](https://github.com/m-labs/sinara) ([Wiki](https://github.com/m-labs/sinara/wiki)) device family.
 
-The design and goals of the project are tracked in the Sinara wiki at [NovoUrukulServo](doc/NovoUrukulServo.md).
+The design and goals of the project are described in [NovoUrukulServo](doc/NovoUrukulServo.md).
 
 ## Code
 
@@ -24,7 +24,7 @@ The design and goals of the project are tracked in the Sinara wiki at [NovoUruku
 * idle: no activity
 * loading: loading ADC values into x0
 * processing: computing y0 and extracting ftw/pow from memory
-* shifting: x0 (previously current measurement) -> x1 (old measurement) value shuffling in sate memory
+* shifting: x0 (current measurement) -> x1 (old measurement) value shuffling in sate memory
 
 ### ADC interface
 
@@ -72,31 +72,26 @@ For 8 channels:
 
 * 1 DSP48E1
 * 2 RAMB36
-* ~900 LUTs
-* ~1500 FFs
+* ~900 LUTs (1.4%)
+* ~1500 FFs (1.3%)
 
 ## Timing
 
-* > 166 MHz on Kasli
+* > 200 MHz on Kasli (xc7a100t-2)
 
 ## TODO
 
-* DDS interface
-* en_out/en_iir/dly setting/clearing
-* profile selection
-* RTIO/mgmt interface
+* RTIO: profile/en_out/en_iir
+* mgmt: dly setting/clearing
 
 ## Ideas
 
 ### Pipelining
 
 * extract FTW0 during CMD, extract FTW1/POW during FTW0 shift, all during CONVH/CONV/SHIFT/LOAD phase to reach one sample latency at full bandwidth
+* pipeline delay updates later (m_coeff to dlys[i] path)
+* shift CMD at the end of the DDS cycle
 
 ### Resources
 
 * move current dlys into m_state RAM (high bits of y1)
-
-### Timing
-
-* pipeline shifting stage (RAMB-out to RAMB-in path)
-* pipeline delay updates later (m_coeff to dlys[i] path)
