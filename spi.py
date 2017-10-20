@@ -52,7 +52,7 @@ class SPISimple(Module):
                     self._diff(pads, "mosi{}".format(i), output=True).eq(d[-1])
             ]
 
-        bits = Signal(max=p.width, reset_less=True)
+        bits = Signal(max=p.width + 1, reset_less=True)
 
         self.submodules.fsm = fsm = CEInserter()(FSM("IDLE"))
 
@@ -89,7 +89,7 @@ class SPISimple(Module):
                     [d[1:].eq(d) for d in self.data]
                 ),
                 If(fsm.ongoing("IDLE"),
-                    bits.eq(p.width - 1)
+                    bits.eq(p.width)
                 )
             )
         ]

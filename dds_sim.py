@@ -20,12 +20,12 @@ class TB(Module):
         clk0 = Signal()
         self.sync += clk0.eq(self.clk)
         sample = Signal()
-        self.comb += sample.eq(Cat(self.clk, clk0) == 0b10)
+        self.comb += sample.eq(Cat(self.clk, clk0) == 0b01)
 
         self.ddss = []
         for i in range(p.channels):
             dds = Record([("ftw", 32), ("pow", 16), ("asf", 16), ("cmd", 8)])
-            sr = Signal(len(dds) + 1)
+            sr = Signal(len(dds))
             self.comb += [
                     dds.raw_bits().eq(sr),
             ]
