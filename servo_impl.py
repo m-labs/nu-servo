@@ -7,7 +7,7 @@ import adc_ser, iir, dds_ser, impl
 
 class Top(impl.Impl):
     def __init__(self, plat):
-        super().__init__(plat, clk=150e6)
+        super().__init__(plat, clk=200e6)
         adc_p = adc_ser.ADCParams(width=16, channels=8, lanes=4,
                 t_cnvh=4, t_conv=57, t_rtt=4)
         adc_pads = plat.request("adc_ser")
