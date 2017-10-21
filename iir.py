@@ -60,8 +60,9 @@ class DSP(Module):
                 p.eq(p + m),
                 If(self.accu_clr,
                     # inject symmetric rouding constant
-                    # (won't infer P reg)
                     # p.eq(1 << (w.shift - 1))
+                    # but that won't infer P reg, so we just clear
+                    # and round down
                     p.eq(0),
                 )
         ]
@@ -69,19 +70,20 @@ class DSP(Module):
         n_sign = w.accu - w.state - w.shift + 1
         assert n_sign > 1
 
-        self.comb += [
-                # signed
-                # self.clip.eq(p[-n_sign:] != Replicate(p[-1], sign)),
-                # unsigned
+        if False:  # signed output
+            self.comb += [
+                self.clip.eq(p[-n_sign:] != Replicate(p[-1], n_sign)),
+                self.output.eq(Mux(self.clip,
+                        Cat(Replicate(~p[-1], w.state - 1), p[-1]),
+                        p[w.shift:]))
+            ]
+        else:  # unsigned output
+            self.comb += [
                 self.clip.eq(p[-n_sign:] != 0),
                 self.output.eq(Mux(self.clip,
-                        # signed
-                        # Cat(Replicate(~p[-1], w.state - 1), p[-1]),
-                        # unsigned
                         Replicate(~p[-1], w.state - 1),
-                        p[w.shift:])
-                )
-        ]
+                        p[w.shift:]))
+            ]
 
 
 class IIR(Module):
@@ -187,9 +189,13 @@ class IIR(Module):
                 )
         ]
 
-        # pipeline group channel pointer (SR)
+        # pipeline group channel pointer
+        # for each pipeline stage, this is the channel currently being
+        # processed
         channel = [Signal(w.channel, reset_less=True) for i in range(3)]
         # pipeline group profile pointer (SR)
+        # for each pipeline stage, this is the profile currently being
+        # processed
         profile = [Signal(w.profile, reset_less=True) for i in range(2)]
         # pipeline phase (lower two bits of state)
         phase = Signal(2, reset_less=True)
