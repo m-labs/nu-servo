@@ -26,26 +26,31 @@ class TB(Module):
         for i in range(p.channels):
             dds = Record([("ftw", 32), ("pow", 16), ("asf", 16), ("cmd", 8)])
             sr = Signal(len(dds))
-            self.comb += [
-                    dds.raw_bits().eq(sr),
-            ]
             self.sync += [
                     If(~self.cs_n & sample,
                         sr.eq(Cat(self.mosi[i], sr))
+                    ),
+                    If(self.io_update,
+                        dds.raw_bits().eq(sr)
                     )
             ]
             self.ddss.append(dds)
 
     @passive
-    def watch(self):
+    def log(self, data):
+        i = 0
         while True:
+            i += 1
             if (yield self.io_update):
+                yield
+                dat = []
                 for dds in self.ddss:
                     v = yield from [(yield getattr(dds, k))
                             for k in "cmd ftw pow asf".split()]
-                    print([hex(_) for _ in v])
-            yield
-
+                    dat.append(v)
+                data.append((i, dat))
+            else:
+                yield
 
 
 def main():
@@ -68,8 +73,13 @@ def main():
         assert not (yield dut.done)
         while not (yield dut.done):
             yield
+        yield
 
-    run_simulation(tb, [tb.watch(), run(tb)], vcd_name="dds.vcd")
+    data = []
+    run_simulation(tb, [tb.log(data), run(tb)], vcd_name="dds.vcd")
+
+    assert data[-1][1] == [[0xe, 0x40 | i, 0x30 | i, 0x20 | i] for i in
+            range(4)]
 
 
 if __name__ == "__main__":
