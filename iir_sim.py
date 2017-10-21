@@ -8,7 +8,7 @@ def main():
     w_kasli = iir.IIRWidths(state=25, coeff=18, adc=16,
             asf=14, word=16, accu=48, shift=11,
             channel=3, profile=5)
-    w = iir.IIRWidths(state=16, coeff=16, adc=16,
+    w = iir.IIRWidths(state=17, coeff=16, adc=16,
             asf=14, word=16, accu=48, shift=11,
             channel=2, profile=1)
 

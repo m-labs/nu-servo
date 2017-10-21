@@ -24,7 +24,7 @@ IIRWidths = namedtuple("IIRWidths", [
 
 
 def signed(v, w):
-    if v >= 1 << w - 1:
+    if v & (1 << w - 1):
         v -= 1 << w
     return v
 
@@ -433,7 +433,7 @@ class IIR(Module):
             v_adc = signed((yield self.adc[i]), w.adc)
             x0 = yield from self.get_state(i, coeff="x0")
             x0s.append(x0)
-            assert v_adc << (w.state - w.adc) == x0, (hex(v_adc), hex(x0))
+            assert v_adc << (w.state - w.adc - 1) == x0, (hex(v_adc), hex(x0))
             logger.debug("adc[%d] adc=%x x0=%x", i, v_adc, x0)
 
         data = []
@@ -455,7 +455,7 @@ class IIR(Module):
             logger.debug("en[%d,%d] %d", i, j, en)
 
             offset = yield from self.get_coeff(i, j, "offset")
-            offset <<= w.state - w.coeff
+            offset <<= w.state - w.coeff - 1
             a1 = yield from self.get_coeff(i, j, "a1")
             b0 = yield from self.get_coeff(i, j, "b0")
             b1 = yield from self.get_coeff(i, j, "b1")
