@@ -1,3 +1,4 @@
+from migen import *
 from migen.genlib import io
 
 
