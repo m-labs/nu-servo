@@ -6,7 +6,7 @@ from dds_ser import DDSParams, DDS
 
 
 class TB(Module):
-    def __init__(self, p, *args, **kwargs):
+    def __init__(self, p):
         self.cs_n = Signal()
         self.clk = Signal()
         self.mosi = [Signal() for i in range(p.channels)]
@@ -14,8 +14,6 @@ class TB(Module):
             setattr(self, "mosi{}".format(i), m)
         self.miso = Signal()
         self.io_update = Signal()
-
-        self.submodules.dds = dds = DDS(self, p, *args, **kwargs)
 
         clk0 = Signal()
         self.sync += clk0.eq(self.clk)
@@ -56,9 +54,11 @@ class TB(Module):
 def main():
     p = DDSParams(channels=4, width=8 + 32 + 16 + 16, clk=1)
     tb = TB(p)
+    dds = DDS(tb, p)
+    tb.submodules += dds
 
     def run(tb):
-        dut = tb.dds
+        dut = dds
         for i, ch in enumerate(dut.profile):
             yield ch.eq((((0
                 << 16 | i | 0x20)
