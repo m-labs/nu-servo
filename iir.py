@@ -17,13 +17,16 @@ IIRWidths = namedtuple("IIRWidths", [
     "adc",      # signed ADC data
     "word",     # "word" size to break up DDS profile data
     "asf",      # unsigned amplitude scale factor for DDS
-    "shift",    # fixed point scaling coefficient for a1, b0, b1
+    "shift",    # fixed point scaling coefficient for a1, b0, b1 (log2!)
     "channel",  # channels (log2!)
     "profile",  # profiles per channel (log2!)
 ])
 
 
 def signed(v, w):
+    """Convert an unsigned integer ``v`` to it's signed value assuming ``w``
+    bits"""
+    assert 0 <= v < (1 << w)
     if v & (1 << w - 1):
         v -= 1 << w
     return v
@@ -31,10 +34,14 @@ def signed(v, w):
 
 class DSP(Module):
     """Thin abstraction of DSP functionality used here, commonly present,
-    and inferrable in FPGAs: multiplier with pre- and post-adder and
-    pipeline registers at every stage."""
-    def __init__(self, w):
+    and inferrable in FPGAs: multiplier with pre-adder and post-accumulator
+    and pipeline registers at every stage."""
+    def __init__(self, w, signed_output=False):
         self.state = Signal((w.state, True))
+        # NOTE:
+        # If offset is non-zero, care must be taken to ensure that the
+        # offset-state difference does not overflow the width of the ad factor
+        # which is also w.state.
         self.offset = Signal((w.state, True))
         self.coeff = Signal((w.coeff, True))
         self.output = Signal((w.state, True))
@@ -66,18 +73,19 @@ class DSP(Module):
                     p.eq(0),
                 )
         ]
-        # w.shift | w.state - 1 | n_sign - 1 | 1 (sign)
+        # Bit layout (LSB-MSB): w.shift | w.state - 1 | n_sign - 1 | 1 (sign)
         n_sign = w.accu - w.state - w.shift + 1
         assert n_sign > 1
 
-        if False:  # signed output
+        # clipping
+        if signed_output:
             self.comb += [
                 self.clip.eq(p[-n_sign:] != Replicate(p[-1], n_sign)),
                 self.output.eq(Mux(self.clip,
                         Cat(Replicate(~p[-1], w.state - 1), p[-1]),
                         p[w.shift:]))
             ]
-        else:  # unsigned output
+        else:
             self.comb += [
                 self.clip.eq(p[-n_sign:] != 0),
                 self.output.eq(Mux(self.clip,
@@ -120,17 +128,17 @@ class IIR(Module):
         # only read during ~processing
         self.dds = [Signal(4*w.word, reset_less=True)
                 for i in range(1 << w.channel)]
-        # perform one IIR iteration, start with shifting, then loading,
-        # then processing, end with done
+        # perform one IIR iteration, start with loading,
+        # then processing, then shifting, end with done
         self.start = Signal()
-        # shifting input state values around (x0 becomes x1)
-        self.shifting = Signal()
         # adc inputs being loaded into RAM (becoming x0)
         self.loading = Signal()
         # processing state data (extracting ftw0/ftw1/pow,
         # computing asf/y0, and storing as y1)
         self.processing = Signal()
-        # dds outputs ready and won't be touched again until processing
+        # shifting input state values around (x0 becomes x1)
+        self.shifting = Signal()
+        # iteration done, the next iteration can be started
         self.done = Signal()
 
         ###
@@ -352,6 +360,13 @@ class IIR(Module):
         ]
 
     def _coeff(self, channel, profile, coeff):
+        """Return ``high_word``, ``address`` and bit ``mask`` for the
+        storage of coefficient name ``coeff`` in profile ``profile``
+        of channel ``channel``.
+
+        ``high_word`` determines whether the coefficient is stored in the high
+        or low part of the memory location.
+        """
         w = self.widths
         addr = "ftw1 b1 pow cfg offset a1 ftw0 b0".split().index(coeff)
         coeff_addr = ((channel << w.profile + 2) | (profile << 2) |
@@ -360,6 +375,12 @@ class IIR(Module):
         return addr & 1, coeff_addr, mask
 
     def set_coeff(self, channel, profile, coeff, value):
+        """Set the coefficient value.
+
+        Note that due to two coefficiddents sharing a single memory
+        location, only one coefficient update can be effected to a given memory
+        location per simulation clock cycle.
+        """
         w = self.widths
         word, addr, mask = self._coeff(channel, profile, coeff)
         val = yield self.m_coeff[addr]
@@ -370,6 +391,7 @@ class IIR(Module):
         yield self.m_coeff[addr].eq(val)
 
     def get_coeff(self, channel, profile, coeff):
+        """Get a coefficient value."""
         w = self.widths
         word, addr, mask = self._coeff(channel, profile, coeff)
         val = yield self.m_coeff[addr]
@@ -382,6 +404,7 @@ class IIR(Module):
         return val
 
     def set_state(self, channel, val, profile=None, coeff="y1"):
+        """Set a state value."""
         w = self.widths
         if coeff == "y1":
             assert profile is not None
@@ -398,6 +421,7 @@ class IIR(Module):
             raise ValueError("no such state", coeff)
 
     def get_state(self, channel, profile=None, coeff="y1"):
+        """Get a state value."""
         w = self.widths
         if coeff == "y1":
             val = yield self.m_state[profile | (channel << w.profile)]
@@ -412,6 +436,7 @@ class IIR(Module):
         return signed(val, w.state)
 
     def fast_iter(self):
+        """Perform a single processing iteration."""
         assert (yield self.done)
         yield self.start.eq(1)
         yield
@@ -421,6 +446,8 @@ class IIR(Module):
             yield
 
     def check_iter(self):
+        """Perform a single processing iteration while verifying
+        the behavior."""
         w = self.widths
 
         while not (yield self.done):
