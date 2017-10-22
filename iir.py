@@ -107,12 +107,11 @@ class IIR(Module):
                 width=w.state,  # y1,x0,x1
                 depth=(1 << w.profile + w.channel) + (2 << w.channel))
         # ctrl should only be updated synchronously
-        # TODO: implement dlys clearing when changing profile or
-        # clearing en_out
         self.ctrl = [Record([
             ("profile", w.profile),
             ("en_out", 1),
-            ("en_iir", 1)])
+            ("en_iir", 1),
+            ("stb", 1)])
             for i in range(1 << w.channel)]
         # only update during ~loading
         self.adc = [Signal((w.adc, True), reset_less=True)
@@ -274,9 +273,9 @@ class IIR(Module):
                 ),
                 If(self.processing,
                     m_state.adr.eq(Array([
-                        # write back y
+                        # write back new y
                         Cat(profile[1], channel[2]),
-                        # old y
+                        # read old y
                         Cat(profile[0], channel[0]),
                         # x0 (recent)
                         0 | (sel_profile << 1) | (1 << w.profile + w.channel),
@@ -292,6 +291,15 @@ class IIR(Module):
         dlys = Array([Signal(len(dly_profile))
             for i in range(1 << w.channel)])
         self._dlys = dlys  # expose for debugging only
+
+        for i in range(1 << w.channel):
+            self.sync += [
+                    # (profile != profile_old) | ~en_out
+                    If(self.ctrl[i].stb,
+                        dlys[i].eq(0),
+                    )
+            ]
+
         # latched channel delay
         dly = Signal(len(dly_profile), reset_less=True)
         # latched channel en_out
