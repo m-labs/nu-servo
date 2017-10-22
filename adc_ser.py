@@ -5,6 +5,8 @@ from collections import namedtuple
 from migen import *
 from migen.genlib import io
 
+from tools import DiffMixin
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ ADCParams = namedtuple("ADCParams", [
 ])
 
 
-class ADC(Module):
+class ADC(Module, DiffMixin):
     def __init__(self, pads, params):
         self.params = p = params
         self.data = [Signal((p.width, True), reset_less=True)
@@ -130,14 +132,4 @@ class ADC(Module):
             ]
 
 
-    def _diff(self, pads, name, output=False):
-        if hasattr(pads, name + "_p"):
-            sig = Signal()
-            p, n = (getattr(pads, name + "_" + s) for s in "pn")
-            if output:
-                self.specials += io.DifferentialOutput(sig, p, n)
-            else:
-                self.specials += io.DifferentialInput(p, n, sig)
-            return sig
-        else:
-            return getattr(pads, name)
+

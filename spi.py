@@ -5,6 +5,8 @@ from migen import *
 from migen.genlib.fsm import FSM, NextState
 from migen.genlib import io
 
+from tools import DiffMixin
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +19,7 @@ SPIParams = namedtuple("SPIParams", [
 ])
 
 
-
-class SPISimple(Module):
+class SPISimple(Module, DiffMixin):
     def __init__(self, pads, params):
         self.params = p = params
         self.data = [Signal(p.width, reset_less=True)
@@ -93,15 +94,3 @@ class SPISimple(Module):
                 )
             )
         ]
-
-    def _diff(self, pads, name, output=True):
-        if hasattr(pads, name + "_p"):
-            sig = Signal()
-            p, n = (getattr(pads, name + "_" + s) for s in "pn")
-            if output:
-                self.specials += io.DifferentialOutput(sig, p, n)
-            else:
-                self.specials += io.DifferentialInput(p, n, sig)
-            return sig
-        else:
-            return getattr(pads, name)

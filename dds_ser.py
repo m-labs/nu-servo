@@ -4,9 +4,12 @@ from migen import *
 
 import spi
 
+
 logger = logging.getLogger(__name__)
 
+
 DDSParams = spi.SPIParams
+
 
 class DDS(spi.SPISimple):
     def __init__(self, pads, params):
