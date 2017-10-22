@@ -60,14 +60,17 @@ class DDRInput:
 
 
 class TB(Module):
-    def __init__(self, params, *args, **kwargs):
+    def __init__(self, params):
         self.params = p = params
 
         self.sck = Signal()
         self.clkout = Signal(reset_less=True)
         self.cnv_b = Signal()
 
-        sck_en = Signal()
+        self.sck_en = Signal()
+        self.sck_en_ret = Signal()
+
+        adc_sck_en = Signal()
         cd_adc = ClockDomain("adc", reset_less=True)
         self.clock_domains += cd_adc
 
@@ -87,7 +90,7 @@ class TB(Module):
                     # one for async
                     self._dly(sr[-1], -1), self._dly(sr[-2], -1), sdo)
             self.sync.adc += [
-                    If(sck_en,
+                    If(adc_sck_en,
                         sr[2:].eq(sr)
                     )
             ]
@@ -99,11 +102,10 @@ class TB(Module):
                     )
             ]
 
-        self.submodules.adc = adc = ADC(self, params, *args, **kwargs)
         adc_clk_rec = Signal()
         self.comb += [
-                sck_en.eq(self._dly(adc._sck_en, 1)),
-                adc._sck_en_ret.eq(self._dly(sck_en)),
+                adc_sck_en.eq(self._dly(self.sck_en, 1)),
+                self.sck_en_ret.eq(self._dly(adc_sck_en)),
                 adc_clk_rec.eq(self._dly(self.sck, 1)),
                 self.clkout.eq(self._dly(adc_clk_rec)),
         ]
@@ -119,9 +121,11 @@ def main():
     params = ADCParams(width=8, channels=4, lanes=2,
             t_cnvh=3, t_conv=5, t_rtt=4)
     tb = TB(params)
+    adc = ADC(tb, params)
+    tb.submodules += adc
 
     def run(tb):
-        dut = tb.adc
+        dut = adc
         for i, ch in enumerate(tb.data):
             yield ch.eq(i)
         assert (yield dut.done)
