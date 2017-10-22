@@ -29,13 +29,20 @@ ADCParams = namedtuple("ADCParams", [
 
 
 class ADC(Module, DiffMixin):
+    """Multi-lane, multi-channel, triggered, source-synchronous, serial
+    ADC interface.
+
+    * Supports ADCs like the LTC2320-16.
+    * Hardcoded timings.
+    """
     def __init__(self, pads, params):
-        self.params = p = params
+        self.params = p = params # ADCParams
         self.data = [Signal((p.width, True), reset_less=True)
-                for i in range(p.channels)]
+                for i in range(p.channels)]  # retrieved ADC data
         self.start = Signal()    # start conversion and reading
         self.reading = Signal()  # data is being read (outputs are invalid)
-        self.done = Signal()     # data is valid
+        self.done = Signal()     # data is valid and a new conversion can
+                                 # be started
 
         ###
 
@@ -78,7 +85,7 @@ class ADC(Module, DiffMixin):
                 )
         )
         fsm.act("CNVH",
-                count_load.eq(p.t_conv - 2),  # sck ODDR delay
+                count_load.eq(p.t_conv - 2),  # account for sck ODDR delay
                 pads.cnv_b.eq(1),
                 If(count_done,
                     NextState("CONV")
@@ -92,13 +99,13 @@ class ADC(Module, DiffMixin):
         )
         fsm.act("READ",
                 self.reading.eq(1),
-                count_load.eq(p.t_rtt),  # sck ODDR delay
+                count_load.eq(p.t_rtt),  # account for sck ODDR delay
                 sck_en.eq(1),
                 If(count_done,
                     NextState("RTT")
                 )
         )
-        fsm.act("RTT",
+        fsm.act("RTT",  # account for sck->clkout round trip time
                 self.reading.eq(1),
                 If(count_done,
                     NextState("IDLE")
@@ -130,6 +137,3 @@ class ADC(Module, DiffMixin):
                     Cat(reversed([self.data[i*k + j] for j in range(k)])).eq(
                         Cat(sdo_ddr, sdo_sr))
             ]
-
-
-

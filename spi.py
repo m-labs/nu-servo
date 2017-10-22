@@ -20,12 +20,20 @@ SPIParams = namedtuple("SPIParams", [
 
 
 class SPISimple(Module, DiffMixin):
+    """Simple reduced SPI interface.
+
+    * Multiple MOSI lines
+    * Supports differential CLK/CS_N/MOSI
+    * Fixed CLK timing
+    * SPI MODE 0 (CPHA=0, CPOL=0)
+    """
     def __init__(self, pads, params):
         self.params = p = params
         self.data = [Signal(p.width, reset_less=True)
-                for i in range(p.channels)]
+                for i in range(p.channels)]  # data to be output, MSB first
         self.start = Signal()  # start transfer
-        self.done = Signal()   # data is valid
+        self.done = Signal()   # transfer complete, next transfer can be
+                               # started
 
         ###
 
