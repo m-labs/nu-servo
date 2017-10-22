@@ -3,70 +3,24 @@ import logging
 from migen import *
 from migen.genlib import io
 
-import adc_sim, iir, dds_sim
+import adc_sim, dds_sim, servo
 
 
-class Servo(Module):
+class ServoSim(servo.Servo):
     def __init__(self):
-        adc_p = adc_sim.ADCParams(width=16, channels=8, lanes=4,
+        adc_p = servo.ADCParams(width=16, channels=8, lanes=4,
                 t_cnvh=4, t_conv=57, t_rtt=4)
-        self.submodules.adc_tb = adc_sim.TB(adc_p)
-        self.adc = self.adc_tb.adc
-
-        proc_p = iir.IIRWidths(state=25, coeff=18, adc=16,
+        iir_p = servo.IIRWidths(state=25, coeff=18, adc=16,
                 asf=14, word=16, accu=48, shift=11,
                 channel=3, profile=5)
-        self.submodules.proc = proc = iir.IIR(proc_p)
-
-        dds_p = dds_sim.DDSParams(width=8 + 32 + 16 + 16,
+        dds_p = servo.DDSParams(width=8 + 32 + 16 + 16,
                 channels=adc_p.channels, clk=1)
+
+        self.submodules.adc_tb = adc_sim.TB(adc_p)
         self.submodules.dds_tb = dds_sim.TB(dds_p)
-        self.dds = self.dds_tb.dds
 
-        t_adc = (adc_p.t_cnvh + adc_p.t_conv + adc_p.t_rtt +
-            adc_p.channels*adc_p.width//2//adc_p.lanes)
-        t_iir = ((1 + 4 + 1) << proc_p.channel) + 1
-        t_dds = (dds_p.width*2 + 1)*dds_p.clk + 1
-        t_cycle = max(t_adc, t_iir, t_dds)
-
-        for i, j, k, l in zip(self.adc.data, self.proc.adc,
-                self.proc.dds, self.dds.profile):
-            self.comb += j.eq(i), l.eq(k)
-
-        self.start = Signal()
-        cnt = Signal(max=t_cycle)
-        cnt_done = Signal()
-        token = Signal(2)
-        self.done = Signal()
-        self.comb += [
-                cnt_done.eq(cnt == 0),
-                self.adc.start.eq(self.start & cnt_done),
-                self.proc.start.eq(token[0] & self.adc.done),
-                self.dds.start.eq(token[1] & self.proc.shifting),
-                self.done.eq(self.dds.done),
-        ]
-        self.sync += [
-                If(~cnt_done,
-                    cnt.eq(cnt - 1),
-                ),
-                If(self.adc.done,
-                    token[0].eq(0),
-                ),
-                If(self.adc.start,
-                    cnt.eq(t_cycle - 1),
-                    token[0].eq(1)
-                ),
-                If(self.proc.shifting,
-                    token[1].eq(0),
-                ),
-                If(self.proc.start,
-                    token[1].eq(token[0]),
-                )
-        ]
-
-        m_coeff = self.proc.m_coeff.get_port(write_capable=True)
-        m_state = self.proc.m_state.get_port(write_capable=True)
-        self.specials += m_coeff, m_state
+        servo.Servo.__init__(self, self.adc_tb, self.dds_tb,
+                adc_p, iir_p, dds_p)
 
     def test(self):
         assert (yield self.done)
@@ -75,21 +29,21 @@ class Servo(Module):
         x0 = 0x0141
         yield self.adc_tb.data[adc].eq(x0)
         channel = 3
-        yield self.proc.adc[channel].eq(adc)
-        yield self.proc.ctrl[channel].en_iir.eq(1)
-        yield self.proc.ctrl[channel].en_out.eq(1)
+        yield self.iir.adc[channel].eq(adc)
+        yield self.iir.ctrl[channel].en_iir.eq(1)
+        yield self.iir.ctrl[channel].en_out.eq(1)
         profile = 5
-        yield self.proc.ctrl[channel].profile.eq(profile)
+        yield self.iir.ctrl[channel].profile.eq(profile)
         x1 = 0x0743
-        yield from self.proc.set_state(adc, x1, coeff="x1")
+        yield from self.iir.set_state(adc, x1, coeff="x1")
         y1 = 0x1145
-        yield from self.proc.set_state(channel, y1,
+        yield from self.iir.set_state(channel, y1,
                 profile=profile, coeff="y1")
         coeff = dict(pow=0x1333, offset=0x1531, ftw0=0x1727, ftw1=0x1929,
                 a1=0x0135, b0=0x0337, b1=0x0539, cfg=adc | (0 << 3))
         for ks in "pow offset ftw0 ftw1", "a1 b0 b1 cfg":
             for k in ks.split():
-                yield from self.proc.set_coeff(channel, value=coeff[k],
+                yield from self.iir.set_coeff(channel, value=coeff[k],
                         profile=profile, coeff=k)
             yield
 
@@ -100,10 +54,10 @@ class Servo(Module):
             yield
         yield  # io_update
 
-        w = self.proc.widths
+        w = self.iir.widths
 
         x0 = x0 << (w.state - w.adc - 1)
-        _ = yield from self.proc.get_state(adc, coeff="x1")
+        _ = yield from self.iir.get_state(adc, coeff="x1")
         assert _ == x0, (hex(_), hex(x0))
 
         offset = coeff["offset"] << (w.state - w.coeff - 1)
@@ -114,7 +68,7 @@ class Servo(Module):
         ) >> w.shift
         y1 = min(max(0, out), (1 << w.state - 1) - 1)
 
-        _ = yield from self.proc.get_state(channel, profile, coeff="y1")
+        _ = yield from self.iir.get_state(channel, profile, coeff="y1")
         assert _ == y1, (hex(_), hex(y1))
 
         _ = yield self.dds_tb.ddss[channel].ftw
@@ -130,7 +84,7 @@ class Servo(Module):
 
 
 if __name__ == "__main__":
-    servo = Servo()
+    servo = ServoSim()
     run_simulation(servo, servo.test(), vcd_name="servo.vcd",
             clocks={
                 "sys":   (8, 0),
