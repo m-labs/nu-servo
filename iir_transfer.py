@@ -91,6 +91,7 @@ def pi_iir(widths, f, k, g=np.inf):
     a1 = f2i((f/g - 1)/z, widths.coeff, widths.shift)
     b0 = f2i(k*(f + 1)/z, widths.coeff, widths.shift + 1)  # pre-adder
     b1 = f2i(k*(f - 1)/z, widths.coeff, widths.shift + 1)  # pre-adder
+    # assert b0 != -b1, "b collapse {}/{}".format(b0, b1)
     return a1, b0, b1
 
 

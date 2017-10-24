@@ -82,7 +82,7 @@ For 8 channels:
 ## TODO
 
 * RTIO: profile/en_out/en_iir
-* mgmt: dly setting/clearing
+* implement zero ADC channel
 
 ## Ideas
 

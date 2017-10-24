@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 IIRWidths = namedtuple("IIRWidths", [
     "state",    # the signed x and y states of the IIR filter
                 # DSP A input, x state is one bit smaller
-                # due to AD pre-adder, y has full width
-    "coeff",    # signed IIR filter coefficients a1, b0, b1
-    "accu",     # IIR accumulator width
-    "adc",      # signed ADC data
-    "word",     # "word" size to break up DDS profile data
-    "asf",      # unsigned amplitude scale factor for DDS
-    "shift",    # fixed point scaling coefficient for a1, b0, b1 (log2!)
-    "channel",  # channels (log2!)
-    "profile",  # profiles per channel (log2!)
+                # due to AD pre-adder, y has full width (25)
+    "coeff",    # signed IIR filter coefficients a1, b0, b1 (18)
+    "accu",     # IIR accumulator width (48)
+    "adc",      # signed ADC data (16)
+    "word",     # "word" size to break up DDS profile data (16)
+    "asf",      # unsigned amplitude scale factor for DDS (14)
+    "shift",    # fixed point scaling coefficient for a1, b0, b1 (log2!) (11)
+    "channel",  # channels (log2!) (3)
+    "profile",  # profiles per channel (log2!) (5)
 ])
 
 
@@ -95,6 +95,110 @@ class DSP(Module):
 
 
 class IIR(Module):
+    """Pipelined IIR processor.
+
+    This module implements a multi-channel IIR (infinite impulse response)
+    filter processor optimized for synthesis on FPGAs.
+
+    It reads multiple (typically 8) input channels (typically from an ADC)
+    and on each iteration processes the data on using a first-order IIR filter.
+    At the end of the cycle each
+    the output of the filter together with additional data (typically frequency
+    tunning word and phase offset word for a DDS) are presented at the outputs
+    of the module.
+
+    Profile memory
+    ==============
+
+    Each channel can operate using any of its profile (typically 32).
+    The profile data consists of the input ADC channel index (SEL), a delay
+    (DLY) for delayed activation of the IIR updates, the three IIR
+    coefficients (A1, B0, B1), the input offset (OFFSET), and additional data
+    (FTW0, FTW1, and POW). Profile data is stored in a dual-port block RAM that
+    can be accessed externally.
+
+    Memory Layout
+    -------------
+
+    TODO
+
+    State memory
+    ============
+
+    The filter state consists of the previous ADC input value X1,
+    the current ADC input value (X0) and the previous output values
+    of the IIR filter (Y1). The filter
+    state is stored in a dual-port block RAM that can be accessed
+    externally.
+
+    Memory Layout
+    -------------
+
+    TODO
+
+    Real-time control
+    =================
+
+    Signals are exposed for each channel:
+
+        * The active profile, PROFILE
+        * Whether to perform IIR filter iterations, EN_IIR
+        * The RF switch state enabling output from the channel, EN_OUT
+
+    Delayed IIR processing
+    ======================
+
+    The IIR filter iterations on a given channel are only performed all of the
+    following are true:
+
+        * PROFILE, EN_IIR, EN_OUT have not been updated in the within the
+          last DLY cycles
+        * EN_IIR is asserted
+        * EN_OUT is asserted
+
+    DSP design
+    ==========
+
+    Typical design at the DSP level. This does not include the description of
+    the pipelining or the overall latency involved.
+
+    IIRWidths(state=25, coeff=18, adc=16,
+        asf=14, word=16, accu=48, shift=11,
+        channel=3, profile=5)
+
+    X0 = ADC * 2^(25 - 1 - 16)
+    X1 = X0 * z^-1
+    A0 = 2^11
+    A0*Y0 = A1*Y1 - B0*(X0 - OFFSET) - B1*(X1 - OFFSET)
+    Y1 = Y0 * z^-1
+    ASF = y0 / 2^(25 - 14 - 1)
+
+    ADC: input value from the ADC
+    ASF: output amplitude scale factor to DDS
+    OFFSET: setpoint
+    A0: fixed factor
+    A1/B0/B1: coefficients
+
+                    B0 --/-   A0: 2^11
+                        18 |         |
+    ADC -/-[<<]-/-(-)-/---(x)-(+)-/-[>>]-/-[_/^]-/---[>>]-/- ASF
+        16   8  24 | 25 |      |  48 11  37     25 |  10  15
+        OFFSET --/-   [z^-1]   ^                 [z^-1]
+                24      |      |                   |
+                         -(x)-(+)-<-(x)-----<------
+                           |         |
+                    B1 --/-   A1 --/-
+                        18        18
+
+    [<<]: left shift, multiply by 2^n
+    [>>]: right shift, divide by 2^n
+    (x): multiplication
+    (+), (-): addition, subtraction
+    [_/^]: clip
+    [z^-1]: register, delay by one processing cycle (~1.1 µs)
+    --/--: signal with a given bit width always includes a sign bit
+    -->--: flow is to the right and down unless otherwise indicated
+    """
     def __init__(self, w):
         self.widths = w
         for i, j in enumerate(w):
