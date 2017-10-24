@@ -23,36 +23,38 @@ class Servo(Module):
         assert t_iir + (2 << iir_p.channel) < t_cycle, "need shifting time"
 
         self.start = Signal()
-        # could be simplified/shrunk by triggering the cycle start on
-        # some other signal further down the pipeline
-        cnt = Signal(max=t_cycle)
+        t_restart = t_cycle - t_iir - t_adc
+        assert t_restart > 0
+        cnt = Signal(max=t_restart)
         cnt_done = Signal()
-        restart = Signal()
         token = Signal(2)
         self.done = Signal()
+        iir_done = Signal()
         self.comb += [
-                restart.eq(self.adc.start),
                 cnt_done.eq(cnt == 0),
+                iir_done.eq(self.iir.shifting | self.iir.done),
                 self.adc.start.eq(self.start & cnt_done),
                 self.iir.start.eq(token[0] & self.adc.done),
-                self.dds.start.eq(token[1] & self.iir.shifting),
+                self.dds.start.eq(token[1] & iir_done),
                 self.done.eq(self.dds.done),
         ]
         self.sync += [
-                If(~cnt_done,
+                If(iir_done & ~cnt_done & ~token[0],
                     cnt.eq(cnt - 1),
                 ),
-                If(self.adc.done,
-                    token[0].eq(0),
+                If(self.adc.start,
+                    cnt.eq(t_restart - 1),
                 ),
-                If(restart,
-                    cnt.eq(t_cycle - 1),
+                If(self.adc.done,
+                    token[0].eq(0)
+                ),
+                If(self.adc.start,
                     token[0].eq(1)
                 ),
-                If(self.iir.shifting,
-                    token[1].eq(0),
+                If(iir_done,
+                    token[1].eq(0)
                 ),
                 If(self.iir.start,
-                    token[1].eq(token[0]),
+                    token[1].eq(1)
                 )
         ]
