@@ -16,7 +16,7 @@ class Servo(Module):
             self.comb += j.eq(i), l.eq(k)
 
         t_adc = (adc_p.t_cnvh + adc_p.t_conv + adc_p.t_rtt +
-            adc_p.channels*adc_p.width//2//adc_p.lanes)
+            adc_p.channels*adc_p.width//2//adc_p.lanes) + 1
         t_iir = ((1 + 4 + 1) << iir_p.channel) + 1
         t_dds = (dds_p.width*2 + 1)*dds_p.clk + 1
         t_cycle = max(t_adc, t_iir, t_dds)
