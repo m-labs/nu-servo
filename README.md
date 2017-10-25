@@ -79,11 +79,6 @@ For 8 channels:
 
 * > 200 MHz on Kasli (xc7a100t-2)
 
-## TODO
-
-* RTIO: profile/en_out/en_iir
-* write directly to state memory and en_iir=0 to control outputs directly
-
 ## Ideas
 
 ### Pipelining
