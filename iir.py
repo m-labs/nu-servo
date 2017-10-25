@@ -100,17 +100,19 @@ class IIR(Module):
     This module implements a multi-channel IIR (infinite impulse response)
     filter processor optimized for synthesis on FPGAs.
 
-    It reads multiple (typically 8) input channels (typically from an ADC)
+    The module is parametrized by passing a ``IIRWidths()`` object which
+    will be abbreviated W here.
+
+    It reads 1 << W.channels input channels (typically from an ADC)
     and on each iteration processes the data on using a first-order IIR filter.
-    At the end of the cycle each
-    the output of the filter together with additional data (typically frequency
-    tunning word and phase offset word for a DDS) are presented at the outputs
-    of the module.
+    At the end of the cycle each the output of the filter together with
+    additional data (typically frequency tunning word and phase offset word
+    for a DDS) are presented at the 1 << W.channels outputs of the module.
 
     Profile memory
     ==============
 
-    Each channel can operate using any of its profile (typically 32).
+    Each channel can operate using any of its 1 << W.profile profiles.
     The profile data consists of the input ADC channel index (SEL), a delay
     (DLY) for delayed activation of the IIR updates, the three IIR
     coefficients (A1, B0, B1), the input offset (OFFSET), and additional data
@@ -120,13 +122,22 @@ class IIR(Module):
     Memory Layout
     -------------
 
-    TODO
+    The profile data is stored sequentially for each channel.
+    Each channel has 1 << W.profile profiles available.
+    Each profile stores 8 values, each up to W.coeff bits wide, arranged as:
+        [FTW1, B1, POW, CFG, OFFSET, A1, FTW0, B0]
+    The lower 8 bits of CFG hold the ADC input channel index SEL.
+    The bits from bit 8 up hold the IIR activation delay DLY.
+    The back memory is 2*W.coeff bits wide and each value pair
+    (even and odd address)
+    are stored in a single location with the odd address value occupying the
+    high bits.
 
     State memory
     ============
 
-    The filter state consists of the previous ADC input value X1,
-    the current ADC input value (X0) and the previous output values
+    The filter state consists of the previous ADC input values X1,
+    the current ADC input values X0 and the previous output values
     of the IIR filter (Y1). The filter
     state is stored in a dual-port block RAM that can be accessed
     externally.
@@ -134,7 +145,11 @@ class IIR(Module):
     Memory Layout
     -------------
 
-    TODO
+    The state memory holds all Y1 values (IIR processor outputs) for all
+    profiles of all channels in the lower half (1 << W.profile + W.channel
+    addresses) and the pairs of old and new ADC input values X1, and X0,
+    in the upper half (1 << W.channel addresses). Each memory location is
+    W.state bits wide.
 
     Real-time control
     =================
@@ -167,11 +182,11 @@ class IIR(Module):
         channel=3, profile=5)
 
     X0 = ADC * 2^(25 - 1 - 16)
-    X1 = X0 * z^-1
+    X1 = X0 delayed by one cycle
     A0 = 2^11
     A0*Y0 = A1*Y1 - B0*(X0 - OFFSET) - B1*(X1 - OFFSET)
-    Y1 = Y0 * z^-1
-    ASF = y0 / 2^(25 - 14 - 1)
+    Y1 = Y0 delayed by one cycle
+    ASF = Y0 / 2^(25 - 14 - 1)
 
     ADC: input value from the ADC
     ASF: output amplitude scale factor to DDS

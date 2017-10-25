@@ -82,7 +82,7 @@ For 8 channels:
 ## TODO
 
 * RTIO: profile/en_out/en_iir
-* implement zero ADC channel
+* write directly to state memory and en_iir=0 to control outputs directly
 
 ## Ideas
 
