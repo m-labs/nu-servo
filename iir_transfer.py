@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from migen import *
 
-import iir
+from artiq.gateware.suservo import iir
 
 
 def drive(dut, x, y, cfg=None):

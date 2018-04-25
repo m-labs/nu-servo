@@ -4,7 +4,7 @@ import string
 from migen import *
 from migen.genlib import io
 
-from adc_ser import ADC, ADCParams
+from artiq.gateware.suservo.adc_ser import ADC, ADCParams
 
 
 class DDROutputImpl(Module):

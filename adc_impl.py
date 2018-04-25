@@ -2,7 +2,9 @@ from migen import *
 from migen.build.generic_platform import *
 from migen.genlib import io
 
-import adc_ser, impl
+from artiq.gateware.suservo import adc_ser
+
+import impl
 
 
 class Top(impl.Impl):

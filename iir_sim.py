@@ -1,7 +1,7 @@
 import logging
 
 from migen import *
-import iir
+from artiq.gateware.suservo import iir
 
 
 def main():

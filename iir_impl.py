@@ -1,6 +1,9 @@
 from migen import *
 
-import iir, impl
+from artiq.gateware.suservo import iir
+
+import impl
+
 
 class Top(impl.Impl):
     def __init__(self, plat):

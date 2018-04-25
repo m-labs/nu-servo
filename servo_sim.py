@@ -3,7 +3,8 @@ import logging
 from migen import *
 from migen.genlib import io
 
-import adc_sim, dds_sim, servo
+import adc_sim, dds_sim
+from artiq.gateware.suservo import servo
 
 
 class ServoSim(servo.Servo):

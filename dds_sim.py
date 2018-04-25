@@ -2,7 +2,7 @@ import logging
 
 from migen import *
 
-from dds_ser import DDSParams, DDS
+from artiq.gateware.suservo.dds_ser import DDSParams, DDS
 
 
 class TB(Module):

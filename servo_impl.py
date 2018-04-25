@@ -2,7 +2,9 @@ from migen import *
 from migen.build.generic_platform import *
 from migen.genlib import io
 
-import impl, servo
+from artiq.gateware.suservo import servo
+
+import impl
 
 
 class Top(impl.Impl):
