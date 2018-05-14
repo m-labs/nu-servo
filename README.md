@@ -1,3 +1,14 @@
+# LEGACY code
+
+**The gateware and tests have been moved to ARTIQ**
+This repository only contains the history and legacy code to test, prototype,
+and evaluate the design.
+See: https://github.com/m-labs/artiq/tree/master/artiq/gateware/suservo
+The code contained here will diverge from the ARTIQ gateware. The latest commit that is known to work with the master branch of this repository is
+https://github.com/m-labs/artiq/commit/929ed4471b1f472de81a42ef5b16dd7d5d93f2cc
+The last commit that contains the NU-Servo as
+a standalone test is fe4b60b9027fc93d9a7c91aec5f62aafb04b847a.
+
 # NU-Servo
 
 NU-Servo is a pipelined, resource efficient IIR filter (a.k.a PI controller). It is tailored to use the [Novogorny 8-channel ADC](https://github.com/m-labs/sinara/wiki/Novogorny) for monitoring the plant, the [Urukul 4-channel DDS](https://github.com/m-labs/sinara/wiki/Urukul) for driving the plant, and the [Kasli FPGA](https://github.com/m-labs/sinara/wiki/Kasli) for performing the computation.
